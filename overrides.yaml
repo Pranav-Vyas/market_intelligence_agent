@@ -1,0 +1,7 @@
+# Manual fixes when discovery or collection gets a URL wrong. Keyed by market, then company.
+# Anyone can add entries; mention them in your PR.
+#
+# ai-meeting-assistants:
+#   Granola:
+#     website: https://www.granola.ai
+#     pricing_url: https://www.granola.ai/pricing

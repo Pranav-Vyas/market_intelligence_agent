@@ -1,0 +1,20 @@
+{
+  "market": "AI meeting assistants",
+  "notes": "Starter list from SPEC.md. Edit at the Day 1 kickoff. Decide whether platform-bundled tools (Zoom AI Companion, Copilot in Teams, Gemini in Meet) count, and record the decision here.",
+  "include_platform_bundled": null,
+  "competitors": [
+    "Otter.ai",
+    "Fireflies.ai",
+    "Fathom",
+    "Granola",
+    "tl;dv",
+    "Read.ai",
+    "Avoma",
+    "Fellow",
+    "MeetGeek",
+    "Notta",
+    "Sembly",
+    "Krisp",
+    "Bluedot"
+  ]
+}

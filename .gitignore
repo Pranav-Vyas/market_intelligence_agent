@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Secrets: never commit
+.env
+
+# Data: cache, snapshots, indexes and runs are shared as a zip, never via git
+data/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Notebooks: clear outputs before committing
+.ipynb_checkpoints/

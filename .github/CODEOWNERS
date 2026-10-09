@@ -1,0 +1,14 @@
+# Automatically requests the right reviewer. Replace the placeholders with GitHub usernames
+# once roles are picked at the Day 1 kickoff, then uncomment. Later lines win.
+#
+# *                                   @A-HANDLE
+# /src/mia/collectors/                @B-HANDLE
+# /src/mia/http.py                    @B-HANDLE
+# /src/mia/cache.py                   @B-HANDLE
+# /src/mia/analysis/clustering.py     @B-HANDLE
+# /src/mia/analysis/coverage.py       @B-HANDLE
+# /src/mia/analysis/scoring.py        @B-HANDLE
+# /src/mia/rag/                       @C-HANDLE
+# /src/mia/analysis/verify.py         @C-HANDLE
+# /app/                               @C-HANDLE
+# /eval/                              @C-HANDLE
