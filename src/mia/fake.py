@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 
-from mia.schemas import Competitor, Document, SearchResult, doc_id
+from mia.schemas import Competitor, Document, doc_id
 
 COMPETITORS = [
     ("Example Notes", "notes"),
@@ -66,17 +66,6 @@ def competitors(k: int) -> list[Competitor]:
             mention_count=len(COMPETITORS) - i,
         )
         for i, (name, slug) in enumerate(COMPETITORS[:k])
-    ]
-
-
-def search_results(query: str, k: int) -> list[SearchResult]:
-    return [
-        SearchResult(
-            url=f"https://blog.example.com/{pick(query, 1000)}-{i}",
-            title=f"Best tools for {query} ({i + 1})",
-            snippet=f"A roundup of {query} including {COMPETITORS[i % len(COMPETITORS)][0]}.",
-        )
-        for i in range(min(k, 3))
     ]
 
 

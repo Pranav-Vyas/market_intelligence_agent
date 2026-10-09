@@ -52,3 +52,30 @@ def models() -> None:
         raise typer.Exit(1) from err
     for name in backend.list_models():
         typer.echo(f"gemini/{name}")
+
+
+@app.command("search-web")
+def search_web(
+    query: str = typer.Argument(..., help="Search query."),
+    k: int = typer.Option(10, "-k", help="Number of results."),
+) -> None:
+    """Search the web (Tavily if TAVILY_API_KEY is set, otherwise ddgs)."""
+    from mia.collectors.search import search
+
+    for i, r in enumerate(search(query, k), 1):
+        typer.echo(f"{i:>2}. {r.title}\n    {r.url}\n    {r.snippet[:160]}")
+
+
+@app.command("check-access")
+def check_access(
+    markdown: bool = typer.Option(False, "--markdown", help="Print a Markdown table."),
+) -> None:
+    """Check which data sources work from this machine (no cache)."""
+    from mia.collectors.access import as_markdown, check_all
+
+    results = check_all()
+    if markdown:
+        typer.echo(as_markdown(results))
+        return
+    for r in results:
+        typer.echo(f"{r.status:>8}  {r.source}: {r.detail}")

@@ -222,9 +222,9 @@ Evidence: "[...] it keeps creating duplicate events in GCal [...]" (reddit.com/r
 | Search API | Discovery; finding pages and threads | Tavily → `ddgs` fallback | P0 | Swap provider |
 | Official site | Features and descriptions | httpx + trafilatura; follow nav links containing features / product / integrations / security | P0 | Put the URL manually in `overrides.yaml` |
 | Pricing page | Pricing | Same as above, plus Playwright when the extracted text is too short (JS-rendered page) | P0 | Manual URL, otherwise mark pricing "unknown" |
-| Reddit | Complaints | Reddit API (PRAW). **Reddit has tightened approval for new API apps, so check access on Day 1.** | P0 | Search `site:reddit.com <product> <problem words>`, then fetch the thread's `.json` slowly and cache it |
+| Reddit | Complaints | Reddit API (PRAW), **if Reddit approves an app** (approval for new apps has been tightened) | P1 | Search results restricted to `site:reddit.com`, title and snippet only. **Reddit's robots.txt disallows fetching its pages and `.json` endpoints, so we don't** (checked Day 1, see `docs/data_sources.md`) |
 | Hacker News | Complaints from technical users | Algolia HN Search API (free, no key) | P0 | — |
-| App stores | Complaints and ratings | `google-play-scraper`; Apple customer-reviews RSS (JSON) | P1 | Skip web-only products |
+| App stores | Complaints and ratings | `google-play-scraper`; Apple customer-reviews RSS (JSON), confirmed working on Day 1 | P0 | Skip web-only products |
 | Comparison / "X vs Y" articles | Discovery, feature cross-check | Search → trafilatura | P1 | — |
 | G2 / Capterra / Trustpilot | Reviews | **Don't scrape.** They use anti-bot measures and their ToS forbids it. Use search-result snippets only. | P2 | Skip |
 | News | Context (funding, launches) | Tavily news search | Stretch | — |
