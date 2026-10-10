@@ -1,35 +1,32 @@
-"""HybridIndex: BM25 + dense retrieval fused with RRF, then cross-encoder rerank (tasks C2–C6).
+"""HybridIndex: BM25 + dense retrieval fused with RRF, then cross-encoder rerank.
 
-The stub below ranks chunks by simple word overlap so the rest of the pipeline can call the
-real interface today.
+Today it is BM25 only (task C2). Dense retrieval and RRF fusion (C4, C5) and the reranker (C6)
+plug in behind the same interface, so callers don't change.
 """
 
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
+from mia.rag.bm25 import BM25Index
 from mia.rag.chunking import chunk_documents
 from mia.schemas import Chunk, Document, Evidence, SourceType
-from mia.stubs import stub
-
-_WORD = re.compile(r"[a-z0-9]+")
-
-
-def _words(text: str) -> set[str]:
-    return set(_WORD.findall(text.lower()))
 
 
 class HybridIndex:
     def __init__(self) -> None:
         self.chunks: list[Chunk] = []
+        self._bm25 = BM25Index([])
 
-    @stub
     def add(self, docs: list[Document]) -> None:
-        self.chunks.extend(chunk_documents(docs))
+        self._add_chunks(chunk_documents(docs))
 
-    @stub
+    def _add_chunks(self, chunks: list[Chunk]) -> None:
+        known = {c.id for c in self.chunks}
+        self.chunks.extend(c for c in chunks if c.id not in known)
+        self._bm25 = BM25Index(self.chunks)
+
     def search(
         self,
         query: str,
@@ -38,18 +35,7 @@ class HybridIndex:
         source_types: list[SourceType] | None = None,
         rerank: bool = True,
     ) -> list[Evidence]:
-        q = _words(query)
-        scored = []
-        for ch in self.chunks:
-            if company is not None and ch.company != company:
-                continue
-            if source_types is not None and ch.source_type not in source_types:
-                continue
-            overlap = len(q & _words(ch.text))
-            if overlap:
-                scored.append(Evidence(chunk=ch, score=float(overlap), retriever="stub"))
-        scored.sort(key=lambda e: e.score, reverse=True)
-        return scored[:k]
+        return self._bm25.search(query, k=k, company=company, source_types=source_types)
 
     def save(self, path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)
@@ -60,5 +46,7 @@ class HybridIndex:
     @classmethod
     def load(cls, path: Path) -> HybridIndex:
         index = cls()
-        index.chunks = [Chunk(**c) for c in json.loads((path / "chunks.json").read_text())]
+        index._add_chunks(
+            [Chunk.model_validate(c) for c in json.loads((path / "chunks.json").read_text())]
+        )
         return index

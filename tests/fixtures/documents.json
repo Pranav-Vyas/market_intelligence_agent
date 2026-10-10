@@ -1,0 +1,145 @@
+[
+  {
+    "url": "https://noted.example.com",
+    "source_type": "official",
+    "company": "Noted",
+    "title": "Noted: AI notes for every meeting",
+    "text": "# Noted: AI notes for every meeting\n\nNoted joins your Zoom, Google Meet and Microsoft Teams calls, records them, and turns the conversation into a clean transcript, a summary and a list of action items within minutes of the call ending.\n\n## Transcription\n\nNoted transcribes meetings in real time in English, Spanish, French and German. Custom vocabulary lets you teach Noted your product names, acronyms and the names of your customers so they are spelled correctly every time. Transcripts are searchable, and you can jump to any moment in the recording by clicking a sentence.\n\n## Speaker identification\n\nNoted labels who said what. After you tag a speaker once, Noted recognizes their voice in future meetings automatically. Speaker talk-time analytics show who dominated the conversation and who barely spoke.\n\n## Summaries and action items\n\nEvery meeting gets an AI summary with key decisions, open questions and next steps. Action items are assigned to the person who committed to them, with a due date when one was mentioned. You can edit the summary before sharing it, and templates let sales, recruiting and engineering teams get the format they need.\n\n## Integrations\n\nNoted syncs action items to Asana, Jira and Linear, posts summaries to Slack channels, and logs call notes to Salesforce and HubSpot. The Google Calendar and Outlook integrations let Noted join scheduled meetings automatically, so you never have to invite the bot by hand.\n\n## Security and privacy\n\nNoted is SOC 2 Type II certified. Recordings are encrypted at rest and in transit. Admins can require participants to consent before recording starts, restrict which meetings Noted may join, and set retention policies that delete recordings after 30, 90 or 365 days. Noted never trains its models on your meeting data.\n\n## Who uses Noted\n\nMore than 40,000 teams use Noted, from five-person startups to enterprise sales organizations with thousands of seats. Customer success teams use it to capture feedback, recruiters use it to share interview notes, and product teams use it to keep a searchable record of every customer call."
+  },
+  {
+    "url": "https://noted.example.com/pricing",
+    "source_type": "pricing",
+    "company": "Noted",
+    "title": "Noted pricing",
+    "text": "# Pricing\n\nBasic: Free. 300 transcription minutes per month, 30 minutes per conversation.\n\nPro: $16.99 per user per month, or $8.33 per user per month billed annually. 1,200 minutes per month, custom vocabulary, Slack integration.\n\nBusiness: $30 per user per month, or $20 per user per month billed annually. 6,000 minutes per month, CRM integrations, admin controls, usage analytics.\n\nEnterprise: Contact sales. SSO, advanced security, data retention controls, dedicated support."
+  },
+  {
+    "url": "https://scribely.example.com",
+    "source_type": "official",
+    "company": "Scribely",
+    "title": "Scribely: meeting assistant for small teams",
+    "text": "# Scribely\n\nScribely is the affordable meeting assistant for small teams. It records, transcribes and summarizes your calls on Zoom and Google Meet.\n\n## Features\n\nAccurate transcription in 30 languages, automatic meeting summaries, action items, and a shared library of all your team's meetings. Scribely works without a bot: the desktop app records system audio, so no assistant ever joins your call.\n\n## Integrations\n\nNotion, Slack and Google Docs. Calendar integration is coming soon."
+  },
+  {
+    "url": "https://scribely.example.com/pricing",
+    "source_type": "pricing",
+    "company": "Scribely",
+    "title": "Scribely pricing",
+    "text": "# Plans\n\nFree: 5 meetings per month.\n\nTeam: $9 per seat per month. Unlimited meetings, all languages, shared library.\n\nEnterprise: Custom pricing."
+  },
+  {
+    "url": "https://recapper.example.com",
+    "source_type": "official",
+    "company": "Recapper",
+    "title": "Recapper: revenue intelligence from every call",
+    "text": "# Recapper\n\nRecapper captures every sales call and turns it into deal intelligence.\n\n## Features\n\nCall recording and transcription, speaker identification, AI summaries, coaching scorecards and deal risk alerts.\n\n## CRM integration\n\nRecapper writes call notes, next steps and deal stage updates straight into Salesforce and HubSpot, so reps never update the CRM by hand.\n\n## Calendar\n\nConnect Google Calendar or Outlook and Recapper joins every external meeting automatically."
+  },
+  {
+    "url": "https://recapper.example.com/pricing",
+    "source_type": "pricing",
+    "company": "Recapper",
+    "title": "Recapper pricing",
+    "text": "# Pricing\n\nStarter: $49 per user per month, billed annually. Minimum 3 seats.\n\nGrowth: $89 per user per month, billed annually.\n\nEnterprise: Contact us."
+  },
+  {
+    "url": "https://reddit.example.com/r/productivity/comments/n1",
+    "source_type": "reddit",
+    "company": "Noted",
+    "title": "Is Noted worth it for a tiny team?",
+    "text": "We are a three person agency and the Pro plan is way too expensive once you add everyone. The free tier runs out after a couple of client calls. Love the summaries though."
+  },
+  {
+    "url": "https://reddit.example.com/r/productivity/comments/n2",
+    "source_type": "reddit",
+    "company": "Noted",
+    "title": "Noted keeps duplicating my calendar events",
+    "text": "Since I connected Google Calendar, Noted keeps creating duplicate events after every meeting and sometimes it joins meetings I already declined. Support told me to reconnect the calendar, which did nothing."
+  },
+  {
+    "url": "https://reddit.example.com/r/sales/comments/n3",
+    "source_type": "reddit",
+    "company": "Noted",
+    "title": "Clients asked me to remove the bot",
+    "text": "Two clients this month asked me to kick the Noted bot out of the call. It joins automatically and people find it creepy when an AI assistant shows up uninvited. I ended up turning off auto-join."
+  },
+  {
+    "url": "https://news.example.com/item?id=n4",
+    "source_type": "hn",
+    "company": "Noted",
+    "title": "Comment on: Show HN: open-source meeting transcription",
+    "text": "I used Noted for a year. Transcription quality is fine for American English but it falls apart with Indian and Scottish accents, and the custom vocabulary barely helps."
+  },
+  {
+    "url": "https://apps.example.com/noted/reviews/n5",
+    "source_type": "app_store",
+    "company": "Noted",
+    "title": "2 stars: Sync is unreliable",
+    "text": "The app constantly loses recordings when my phone switches from wifi to cellular. Summaries are great when it works.",
+    "meta": {"rating": 2}
+  },
+  {
+    "url": "https://reddit.example.com/r/smallbusiness/comments/s1",
+    "source_type": "reddit",
+    "company": "Scribely",
+    "title": "Scribely vs Noted for a small team",
+    "text": "Switched to Scribely because it is cheaper, but there is still no calendar integration, so I have to start every recording by hand and I keep forgetting."
+  },
+  {
+    "url": "https://news.example.com/item?id=s2",
+    "source_type": "hn",
+    "company": "Scribely",
+    "title": "Comment on: Ask HN: best bot-free meeting recorder?",
+    "text": "Scribely's no-bot approach is great for privacy, but transcription with strong accents is noticeably worse than the bigger tools. Our Nigerian and Brazilian colleagues come out garbled."
+  },
+  {
+    "url": "https://apps.example.com/scribely/reviews/s3",
+    "source_type": "app_store",
+    "company": "Scribely",
+    "title": "1 star: Lost my meeting",
+    "text": "Recorded a two hour board meeting and the app crashed at the end. Nothing was saved. No way to recover it.",
+    "meta": {"rating": 1}
+  },
+  {
+    "url": "https://reddit.example.com/r/sales/comments/r1",
+    "source_type": "reddit",
+    "company": "Recapper",
+    "title": "Recapper is great but the price",
+    "text": "Recapper's CRM sync is the best I have used, but $49 a seat with a three seat minimum is way too expensive for a two person startup. We cannot justify it yet."
+  },
+  {
+    "url": "https://reddit.example.com/r/sales/comments/r2",
+    "source_type": "reddit",
+    "company": "Recapper",
+    "title": "Prospects hate the recorder",
+    "text": "Half my prospects ask whether the Recapper bot can leave the call. In Europe people are especially uncomfortable being recorded without an explicit consent prompt."
+  },
+  {
+    "url": "https://news.example.com/item?id=r3",
+    "source_type": "hn",
+    "company": "Recapper",
+    "title": "Comment on: Sales tools that actually help",
+    "text": "Recapper's Outlook integration double books follow-up meetings and creates duplicate calendar invites. We had to turn off automatic scheduling."
+  },
+  {
+    "url": "https://apps.example.com/recapper/reviews/r4",
+    "source_type": "app_store",
+    "company": "Recapper",
+    "title": "3 stars: Fine on desktop, weak on mobile",
+    "text": "The mobile app cannot record in-person meetings, only calls. Transcripts take an hour to show up.",
+    "meta": {"rating": 3}
+  },
+  {
+    "url": "https://blog.example.com/best-ai-meeting-assistants",
+    "source_type": "comparison",
+    "company": null,
+    "title": "The 5 best AI meeting assistants this year",
+    "text": "# The best AI meeting assistants\n\n## 1. Noted\n\nThe most complete option, with strong summaries and CRM integrations, but pricey for small teams.\n\n## 2. Scribely\n\nThe budget pick. No bot joins your calls, but it has no calendar integration yet.\n\n## 3. Recapper\n\nBuilt for sales teams, with the deepest Salesforce and HubSpot integration. Expensive, with a three seat minimum.\n\n## 4. MinuteMind\n\nA newer entrant focused on multilingual meetings.\n\n## 5. Echo Notes\n\nOpen-source and self-hosted, for teams with strict privacy requirements."
+  },
+  {
+    "url": "https://blog.example.com/noted-vs-recapper",
+    "source_type": "comparison",
+    "company": null,
+    "title": "Noted vs Recapper",
+    "text": "Noted is the better general-purpose assistant: cheaper, more languages and a usable free tier. Recapper wins for sales teams that live in Salesforce. Both rely on a bot joining the call, which some clients dislike."
+  }
+]
