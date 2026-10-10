@@ -32,6 +32,8 @@ class Settings:
     model_smart: str = field(default_factory=lambda: _env("MIA_MODEL_SMART"))
     gemini_api_key: str = field(default_factory=lambda: _env("GEMINI_API_KEY"))
     tavily_api_key: str = field(default_factory=lambda: _env("TAVILY_API_KEY"))
+    reddit_client_id: str = field(default_factory=lambda: _env("REDDIT_CLIENT_ID"))
+    reddit_client_secret: str = field(default_factory=lambda: _env("REDDIT_CLIENT_SECRET"))
     llm_rpm: int = field(default_factory=lambda: _env_int("MIA_LLM_RPM", 10))
     max_llm_calls_per_run: int = field(
         default_factory=lambda: _env_int("MIA_MAX_LLM_CALLS_PER_RUN", 200)
