@@ -26,10 +26,14 @@ uv run mia check-access            # or --markdown to paste a fresh table below
 | Web search | Tavily (if a key is set) | `ddgs`, no key | Both cached. ddgs is enough for development. |
 | Official and pricing pages | `http.get` + trafilatura | Playwright for JavaScript pricing pages; manual URLs in `overrides.yaml` | robots.txt respected. |
 | Hacker News complaints | Algolia HN Search API | — | Free, no key, generous limits. |
-| Reddit complaints | Official API, **if Reddit approves an app** | Search results restricted to Reddit (`site:reddit.com <product> <problem>`), using the title and snippet only | **We do not fetch reddit.com pages or `.json` endpoints: their robots.txt disallows it.** Snippets are short, so Reddit will carry less weight than HN and the app stores. |
+| Reddit complaints | Official API, **only if Reddit approves our request** | None: Reddit is left out | Reddit's Responsible Builder Policy (Reddit Help → Developer Platform & Data API Usage) requires approval before any API use, restricts "commercial and non-commercial mining", and says research using Reddit data outside its Researchers Program violates the policy. robots.txt also disallows fetching pages. So we don't fetch Reddit pages and don't mine Reddit search snippets. |
+| GitHub issues (optional) | GitHub REST API | Skip products without public repos | Useful for open-source or developer-facing products. |
 | App reviews (iOS) | Apple iTunes search API → customer-reviews RSS (JSON) | — | The RSS feed returns up to 50 recent reviews per page. |
 | App reviews (Android) | `google-play-scraper` (added on Day 3) | Skip web-only products | App pages are allowed by robots.txt. |
 | G2 / Capterra / Trustpilot | Search snippets only | Skip | Anti-bot measures and their terms forbid scraping. |
+
+## Reddit status
+A script app was created on 2026-10-11. Reddit's policy page says API use needs explicit approval, so `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` stay empty until an access request is approved. If you file one, describe the use accurately: non-commercial student project, read-only, low volume, posts analyzed by an LLM to find common complaints, not used for model training.
 
 ## Etiquette (enforced in `mia/http.py`)
 - Descriptive User-Agent naming the project and repo.

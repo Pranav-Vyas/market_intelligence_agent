@@ -10,7 +10,9 @@ from mia import fake
 from mia.schemas import Competitor, Document
 from mia.stubs import stub
 
-COMPLAINT_SOURCES = ("reddit", "hn", "app_store")
+# Reddit is left out: its policy requires approved API access (docs/data_sources.md).
+# Add "reddit" here only if that approval comes through.
+COMPLAINT_SOURCES = ("hn", "app_store")
 
 
 @stub

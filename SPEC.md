@@ -52,7 +52,7 @@ A news/funding section, more markets, deployment (Streamlit Community Cloud or H
         │
         │  Send: one branch per competitor, run in parallel
         ├──────► Product Scout    official + pricing pages → pricing tiers
-        └──────► Customer Scout   HN, app stores, Reddit → complaints
+        └──────► Customer Scout   HN, app stores → complaints
                         │  (all branches join)
                         ▼
               Evidence store: HybridIndex (BM25 + dense → RRF → rerank)
@@ -156,7 +156,7 @@ That keeps runs predictable, demoable and inside the free quota.
 |---|---|---|---|---|
 | **Discovery Scout** | Find 5–8 competitors | Which search queries to try next when too few candidates pass validation | At most 2 extra search rounds | `discovery.py`, `collectors/search.py` |
 | **Product Scout** (one per competitor) | Official, feature and pricing pages → pricing tiers | Which site links are worth fetching (features, integrations, security, pricing) | At most 6 pages per competitor | `collectors/web.py`, `analysis/pricing.py` |
-| **Customer Scout** (one per competitor) | Complaints from HN, app stores and Reddit | Which source and query to try next, until the company has enough complaint documents | At most 6 steps; stops at 15 complaint documents | `collectors/complaints.py`, `analysis/complaints.py` |
+| **Customer Scout** (one per competitor) | Complaints from HN and the app stores (Reddit only if Reddit approves API access, §5) | Which source and query to try next, until the company has enough complaint documents | At most 6 steps; stops at 15 complaint documents | `collectors/complaints.py`, `analysis/complaints.py` |
 | **Analyst** | Feature matrix, clusters, coverage, scores | Feature taxonomy, cluster names, coverage judgments (LLM extraction). **Scores are plain code.** | — | `features.py`, `clustering.py`, `coverage.py`, `scoring.py` |
 | **Verifier** | Check every quote; send weak findings back | Whether each quote supports its claim (LLM judge) | At most 2 verify → research rounds | `verify.py` |
 
@@ -243,10 +243,10 @@ At most 3 complaints are counted per document, so one viral thread can't dominat
 Target output, in the style of Topic.md:
 ```
 Pain point: Poor Google Calendar integration          kind: poor_execution
-Frequency: 18% of complaints (22 complaints, 12 docs, reddit+app_store+hn)
+Frequency: 18% of complaints (22 complaints, 12 docs, app_store+hn)
 Severity: 2.4 / 3     Coverage: 2/7 competitors address it well
 Score: 8.4 / 10  (F 0.9 · S 0.7 · G 0.71 · E 1.0)
-Evidence: "[...] it keeps creating duplicate events in GCal [...]" (reddit.com/r/...)  ✓ verified
+Evidence: "[...] it keeps creating duplicate events in GCal [...]" (App Store review)  ✓ verified
 ```
 
 ---
@@ -258,7 +258,8 @@ Evidence: "[...] it keeps creating duplicate events in GCal [...]" (reddit.com/r
 | Search API | Discovery; finding pages and threads | Tavily → `ddgs` fallback | P0 | Swap provider |
 | Official site | Features and descriptions | httpx + trafilatura; follow nav links containing features / product / integrations / security | P0 | Put the URL manually in `overrides.yaml` |
 | Pricing page | Pricing | Same as above, plus Playwright when the extracted text is too short (JS-rendered page) | P0 | Manual URL, otherwise mark pricing "unknown" |
-| Reddit | Complaints | Reddit API (PRAW), **if Reddit approves an app** (approval for new apps has been tightened) | P1 | Search results restricted to `site:reddit.com`, title and snippet only. **Reddit's robots.txt disallows fetching its pages and `.json` endpoints, so we don't** (checked Day 1, see `docs/data_sources.md`) |
+| Reddit | Complaints | **Only if Reddit approves our API request.** Its Responsible Builder Policy requires approval before any API use, and restricts mining its content and research done outside its Researchers Program | Optional | **No workaround.** We don't fetch Reddit pages (robots.txt disallows it) and don't mine Reddit search snippets either. HN and the app stores cover complaints (see `docs/data_sources.md`) |
+| GitHub issues | Complaints, for products with public repos | GitHub REST API | Optional | Skip products without public repos |
 | Hacker News | Complaints from technical users | Algolia HN Search API (free, no key) | P0 | — |
 | App stores | Complaints and ratings | `google-play-scraper`; Apple customer-reviews RSS (JSON), confirmed working on Day 1 | P0 | Skip web-only products |
 | Comparison / "X vs Y" articles | Discovery, feature cross-check | Search → trafilatura | P1 | — |
@@ -328,7 +329,7 @@ fetch_page(url: str, source_type: SourceType, company: str | None) -> Document |
 collect_official(c: Competitor) -> list[Document]                            # web.py
 collect_complaints(c: Competitor, market: str, source: str,                  # complaints.py
                    query: str | None = None, limit: int = 40) -> list[Document]
-#   source is one of COMPLAINT_SOURCES = ("reddit", "hn", "app_store")
+#   source is one of COMPLAINT_SOURCES = ("hn", "app_store"); "reddit" is added only if Reddit approves API access
 
 # rag (C)
 chunk_documents(docs: list[Document]) -> list[Chunk]                         # rag/chunking.py
@@ -414,7 +415,7 @@ Assumes **about 6–8 focused hours per person per day**, so 10 working days is 
 ```
 Day 1   Foundation     skeleton on main, contracts agreed, data-access checks     → tag v0.1-skeleton
 Day 2   Official data  discovery, official/pricing pages, dense + hybrid search
-Day 3   Customer data  Reddit/HN/app stores, reranker, feature matrix, pricing
+Day 3   Customer data  HN and app stores, reranker, feature matrix, pricing
 Day 4   MVP            FROZEN SNAPSHOT, linear pipeline on real data, eval set     → tag v0.2-mvp
 Day 5   Analysis       clustering, coverage, scoring, verification, report, UI v1,
                        graph skeleton with checkpoints                             → tag v0.3-pipeline
@@ -471,7 +472,7 @@ Every task ID below becomes a GitHub issue. Each PR title includes the task ID.
 |---|---|---|---|
 | A7 | A | `features.py`: LLM proposes 10–15 canonical features from official pages, then judges each company × feature with a quote (one call per company) | Matrix for at least 5 competitors |
 | A8 | A | `pricing.py`: structured extraction. Every price must appear in the page text (regex check) or it is dropped | Pricing table for at least 5 competitors |
-| B5 | B | `reddit.py` (or fallback) + `hn.py`: queries like "{name} problem / issue / cancel / alternative" | At least 15 complaint docs for at least 4 competitors |
+| B5 | B | `hn.py`: Algolia queries like "{name} problem / issue / cancel / alternative". Add `reddit.py` only if Reddit has approved API access by then | At least 15 complaint docs for at least 4 competitors (with B6's app-store reviews) |
 | B6 | B | `appstores.py` (Google Play + Apple RSS) + `dedupe.py` (URL + normalized-text hash) | Reviews collected for competitors that have apps |
 | C6 | C | `rag/rerank.py`: fastembed cross-encoder over the hybrid top 30 | Under about 2 seconds per query on CPU |
 | C7 | C | Index the real data collected so far; `mia search` CLI with filters; sanity-check results across companies and sources | `mia search "pricing too expensive" --company Otter` returns sensible chunks |
@@ -732,7 +733,7 @@ Co-authored-by: Teammate Name <their-github-email>
 | Risk | Mitigation |
 |---|---|
 | Sites block scraping, or pricing pages are rendered with JavaScript | Cache, Playwright fallback, manual URLs in `overrides.yaml`, mark "unknown" instead of guessing |
-| No Reddit API access | Reddit via search-result snippets only (its robots.txt rules out fetching pages); HN and app stores carry most complaints |
+| No Reddit API access (likely: approval is required and slow) | Reddit is optional. HN and app stores carry the complaints; GitHub issues are an extra source where products have public repos |
 | The LLM invents gaps | Gaps come only from clusters; verbatim quote checks; evidence gates; weak signals separated out |
 | One viral thread dominates the results | Count distinct documents; at most 3 complaints per document |
 | Integration crunch at the end | Walking skeleton on Day 1, daily merges, graph built only on a working pipeline, catch-up on Day 7, freeze on Day 9 |
