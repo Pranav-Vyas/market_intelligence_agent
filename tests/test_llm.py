@@ -117,3 +117,26 @@ def test_missing_model_setting_explains_fix(settings):
 def test_unknown_provider(llm):
     with pytest.raises(LLMConfigError, match="No LLM backend"):
         llm.complete("x", model="nope/some-model")
+
+
+def test_thinking_defaults_per_alias_and_override(llm, backend):
+    llm.complete("a", model="bulk")
+    llm.complete("b", model="smart")
+    llm.complete("c", model="smart", thinking="high")
+    assert [c["thinking"] for c in backend.calls] == ["low", "medium", "high"]
+
+
+def test_full_model_id_uses_model_default_thinking(llm, backend):
+    llm.complete("a", model="fake/other-model")
+    assert backend.calls[0]["thinking"] is None
+
+
+def test_thinking_level_is_part_of_the_cache_key(llm, backend):
+    backend.responses = ["low answer", "high answer"]
+    assert llm.complete("same", model="smart", thinking="low") == "low answer"
+    assert llm.complete("same", model="smart", thinking="high") == "high answer"
+
+
+def test_invalid_thinking_level_is_rejected(llm):
+    with pytest.raises(LLMConfigError, match="Thinking level"):
+        llm.complete("x", thinking="extreme")

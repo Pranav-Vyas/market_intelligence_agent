@@ -11,6 +11,11 @@ Never call a provider SDK directly from other modules. Use `llm()` from `mia.run
     from mia.runtime import llm
     text = llm().complete("Summarize ...", model="smart")
     result = llm().extract("Extract ...", schema=MySchema)   # validated Pydantic instance
+
+Thinking: Gemini 3 models think before answering. Each alias has a default level from .env
+(MIA_THINKING_BULK, MIA_THINKING_SMART); pass `thinking="minimal" | "low" | "medium" | "high"` to
+override it for one call. Not every model supports every level (gemini-3.8-flash rejects
+"minimal"); Gemini returns a clear 400 error in that case, which is not retried.
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from mia.config import Settings
 T = TypeVar("T", bound=BaseModel)
 
 MAX_ATTEMPTS = 5
+THINKING_LEVELS = ("minimal", "low", "medium", "high")
 BACKOFF_BASE_S = 2.0
 BACKOFF_MAX_S = 60.0
 
@@ -54,6 +60,15 @@ class LLMOutputError(LLMError):
     """The model returned output that doesn't match the requested schema, even after a retry."""
 
 
+@dataclass(frozen=True)
+class LLMRequest:
+    prompt: str
+    system: str | None = None
+    schema: type[BaseModel] | None = None
+    temperature: float = 0.0
+    thinking: str | None = None  # one of THINKING_LEVELS; None = the model's default
+
+
 @dataclass
 class RawResponse:
     text: str
@@ -62,14 +77,7 @@ class RawResponse:
 
 
 class Backend(Protocol):
-    def generate(
-        self,
-        model: str,
-        prompt: str,
-        system: str | None,
-        schema: type[BaseModel] | None,
-        temperature: float,
-    ) -> RawResponse: ...
+    def generate(self, model: str, req: LLMRequest) -> RawResponse: ...
 
     def is_retryable(self, exc: Exception) -> bool: ...
 
@@ -82,16 +90,21 @@ class GeminiBackend:
 
         self._client = genai.Client(api_key=api_key)
 
-    def generate(self, model, prompt, system, schema, temperature) -> RawResponse:
+    def generate(self, model: str, req: LLMRequest) -> RawResponse:
         from google.genai import types
 
+        thinking = None
+        if req.thinking:
+            level = types.ThinkingLevel(req.thinking.upper())
+            thinking = types.ThinkingConfig(thinking_level=level)
         config = types.GenerateContentConfig(
-            system_instruction=system,
-            temperature=temperature,
-            response_mime_type="application/json" if schema else None,
-            response_schema=schema,
+            system_instruction=req.system,
+            temperature=req.temperature,
+            response_mime_type="application/json" if req.schema else None,
+            response_schema=req.schema,
+            thinking_config=thinking,
         )
-        resp = self._client.models.generate_content(model=model, contents=prompt, config=config)
+        resp = self._client.models.generate_content(model=model, contents=req.prompt, config=config)
         usage = resp.usage_metadata
         output_tokens = 0
         if usage:
@@ -161,9 +174,13 @@ class LLM:
         system: str | None = None,
         model: str = "smart",
         temperature: float = 0.0,
+        thinking: str | None = None,
     ) -> str:
         """Plain text completion. `model` is "bulk", "smart" or a full "provider/model-id"."""
-        return self._call(prompt, system, None, self._resolve(model), temperature)
+        full_model, default_thinking = self._resolve(model)
+        level = self._thinking(thinking, default_thinking)
+        req = LLMRequest(prompt, system, None, temperature, level)
+        return self._call(full_model, req)
 
     def extract(
         self,
@@ -173,10 +190,12 @@ class LLM:
         system: str | None = None,
         model: str = "bulk",
         temperature: float = 0.0,
+        thinking: str | None = None,
     ) -> T:
         """Structured output, validated against `schema`. Retries once with the error message."""
-        full_model = self._resolve(model)
-        text = self._call(prompt, system, schema, full_model, temperature)
+        full_model, default_thinking = self._resolve(model)
+        level = self._thinking(thinking, default_thinking)
+        text = self._call(full_model, LLMRequest(prompt, system, schema, temperature, level))
         try:
             return schema.model_validate_json(text)
         except ValidationError as err:
@@ -184,7 +203,8 @@ class LLM:
                 f"{prompt}\n\nYour previous answer did not match the required JSON schema:\n"
                 f"{err}\nReturn only valid JSON matching the schema."
             )
-            text = self._call(retry_prompt, system, schema, full_model, temperature)
+            retry = LLMRequest(retry_prompt, system, schema, temperature, level)
+            text = self._call(full_model, retry)
             try:
                 return schema.model_validate_json(text)
             except ValidationError as err2:
@@ -192,10 +212,17 @@ class LLM:
 
     # ---- internals --------------------------------------------------------------------------
 
-    def _resolve(self, model: str) -> str:
+    def _resolve(self, model: str) -> tuple[str, str | None]:
+        """Return the full model string and its default thinking level."""
+        default_thinking = None
         if model in ("bulk", "smart"):
             env_name = f"MIA_MODEL_{model.upper()}"
-            model = self.settings.model_bulk if model == "bulk" else self.settings.model_smart
+            s = self.settings
+            model, default_thinking = (
+                (s.model_bulk, s.thinking_bulk)
+                if model == "bulk"
+                else (s.model_smart, s.thinking_smart)
+            )
             if not model:
                 raise LLMConfigError(
                     f"{env_name} is not set. Run `uv run mia models` to list the model IDs your "
@@ -203,7 +230,14 @@ class LLM:
                 )
         if "/" not in model:
             raise LLMConfigError(f"Model {model!r} must look like 'provider/model-id'.")
-        return model
+        return model, default_thinking or None
+
+    @staticmethod
+    def _thinking(requested: str | None, default: str | None) -> str | None:
+        level = requested or default
+        if level is not None and level not in THINKING_LEVELS:
+            raise LLMConfigError(f"Thinking level {level!r} must be one of {THINKING_LEVELS}.")
+        return level
 
     def _backend(self, provider: str) -> Backend:
         if provider not in self._backends:
@@ -213,22 +247,23 @@ class LLM:
                 raise LLMConfigError(f"No LLM backend for provider {provider!r}.")
         return self._backends[provider]
 
-    def _cache_path(self, model, prompt, system, schema, temperature) -> Path:
+    def _cache_path(self, model: str, req: LLMRequest) -> Path:
         key = json.dumps(
             {
                 "model": model,
-                "system": system,
-                "prompt": prompt,
-                "schema": schema.model_json_schema() if schema else None,
-                "temperature": temperature,
+                "system": req.system,
+                "prompt": req.prompt,
+                "schema": req.schema.model_json_schema() if req.schema else None,
+                "temperature": req.temperature,
+                "thinking": req.thinking,
             },
             sort_keys=True,
         )
         digest = hashlib.sha256(key.encode()).hexdigest()
         return self._cache_dir / digest[:2] / f"{digest}.json"
 
-    def _call(self, prompt, system, schema, model, temperature) -> str:
-        path = self._cache_path(model, prompt, system, schema, temperature)
+    def _call(self, model: str, req: LLMRequest) -> str:
+        path = self._cache_path(model, req)
         if path.exists():
             self.usage.cache_hits += 1
             return json.loads(path.read_text())["text"]
@@ -241,9 +276,7 @@ class LLM:
 
         provider, model_id = model.split("/", 1)
         backend = self._backend(provider)
-        raw = self._generate_with_retries(
-            backend, model, model_id, prompt, system, schema, temperature
-        )
+        raw = self._generate_with_retries(backend, model, model_id, req)
 
         self.usage.requests += 1
         self.usage.input_tokens += raw.input_tokens
@@ -264,12 +297,12 @@ class LLM:
         return raw.text
 
     def _generate_with_retries(
-        self, backend, model, model_id, prompt, system, schema, temperature
+        self, backend: Backend, model: str, model_id: str, req: LLMRequest
     ) -> RawResponse:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             self._throttle(model)
             try:
-                return backend.generate(model_id, prompt, system, schema, temperature)
+                return backend.generate(model_id, req)
             except Exception as exc:
                 if attempt == MAX_ATTEMPTS or not backend.is_retryable(exc):
                     raise

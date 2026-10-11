@@ -30,6 +30,9 @@ class Settings:
     # LLM: model strings are "<provider>/<model-id>", e.g. "gemini/<id from `mia models`>".
     model_bulk: str = field(default_factory=lambda: _env("MIA_MODEL_BULK"))
     model_smart: str = field(default_factory=lambda: _env("MIA_MODEL_SMART"))
+    # Thinking level per alias: "minimal" | "low" | "medium" | "high" (Gemini 3 models).
+    thinking_bulk: str = field(default_factory=lambda: _env("MIA_THINKING_BULK", "low"))
+    thinking_smart: str = field(default_factory=lambda: _env("MIA_THINKING_SMART", "medium"))
     gemini_api_key: str = field(default_factory=lambda: _env("GEMINI_API_KEY"))
     tavily_api_key: str = field(default_factory=lambda: _env("TAVILY_API_KEY"))
     reddit_client_id: str = field(default_factory=lambda: _env("REDDIT_CLIENT_ID"))
