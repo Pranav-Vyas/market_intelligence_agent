@@ -4,19 +4,32 @@ import pytest
 
 from mia import runtime
 from mia.config import Settings
-from mia.llm import LLM, RawResponse
+from mia.llm import LLM, LLMRequest, RawResponse
 
 
 class FakeBackend:
     """Stands in for a provider. Returns queued responses and records every call."""
 
-    def __init__(self, responses: list[str | Exception] | None = None):
+    def __init__(self, responses: list[str | Exception] | None = None, responder=None):
+        """`responder(req) -> str` computes a reply when the queue of `responses` is empty."""
         self.responses = list(responses or [])
+        self.responder = responder
         self.calls: list[dict] = []
 
-    def generate(self, model, prompt, system, schema, temperature) -> RawResponse:
-        self.calls.append({"model": model, "prompt": prompt, "system": system, "schema": schema})
-        item = self.responses.pop(0) if self.responses else "ok"
+    def generate(self, model, req: LLMRequest) -> RawResponse:
+        self.calls.append(
+            {
+                "model": model,
+                "prompt": req.prompt,
+                "system": req.system,
+                "schema": req.schema,
+                "thinking": req.thinking,
+            }
+        )
+        if self.responses:
+            item = self.responses.pop(0)
+        else:
+            item = self.responder(req) if self.responder else "ok"
         if isinstance(item, Exception):
             raise item
         return RawResponse(text=item, input_tokens=10, output_tokens=5)
@@ -35,6 +48,8 @@ def settings(tmp_path) -> Settings:
         model_bulk="fake/bulk-model",
         model_smart="fake/smart-model",
         gemini_api_key="",
+        thinking_bulk="low",
+        thinking_smart="medium",
         tavily_api_key="",
         llm_rpm=60_000,
         max_llm_calls_per_run=3,
