@@ -4,9 +4,38 @@ Network-bound stages are replaced with fixture data; everything else runs for re
 from __future__ import annotations
 
 import json
+import re
+
+import pytest
 
 from mia import pipeline
+from mia.llm import LLM
 from mia.schemas import MarketReport
+from tests.conftest import FakeBackend
+
+
+def _fake_llm_reply(req) -> str:
+    """Complaint extraction: quote the first sentence of every text, so quotes are verbatim."""
+    if req.schema is not None and req.schema.__name__ == "_Batch":
+        results = []
+        for text_id, body in re.findall(r'<text id="(\d+)">\n(.*?)\n</text>', req.prompt, re.S):
+            text = body.split("\n", 1)[-1].strip()
+            first = re.split(r"(?<=[.!?])\s", text)[0]
+            summary = "too expensive" if "expensive" in text else "unreliable recording"
+            results.append(
+                {
+                    "text_id": int(text_id),
+                    "complaints": [{"summary": summary, "quote": first, "severity": 2}],
+                }
+            )
+        return json.dumps({"results": results})
+    return "{}"
+
+
+@pytest.fixture
+def fake_llm(settings) -> LLM:
+    return LLM(settings, backends={"fake": FakeBackend(responder=_fake_llm_reply)})
+
 
 SECTIONS = [
     "## Competitors",
@@ -19,8 +48,8 @@ SECTIONS = [
 ]
 
 
-def test_run_writes_report_and_json(settings, offline_world):
-    result = pipeline.run("AI meeting assistants", settings=settings)
+def test_run_writes_report_and_json(settings, offline_world, fake_llm):
+    result = pipeline.run("AI meeting assistants", settings=settings, llm_client=fake_llm)
 
     report_md = (result.run_dir / "report.md").read_text()
     for section in SECTIONS:
@@ -31,12 +60,14 @@ def test_run_writes_report_and_json(settings, offline_world):
     assert result.run_dir.parent.name == "ai-meeting-assistants"
 
 
-def test_report_is_internally_consistent(settings, offline_world):
-    report = pipeline.run("AI meeting assistants", settings=settings).report
+def test_report_is_internally_consistent(settings, offline_world, fake_llm):
+    report = pipeline.run("AI meeting assistants", settings=settings, llm_client=fake_llm).report
     names = {c.name for c in report.competitors}
     complaint_ids = {c.id for c in report.complaints}
 
     assert names == {"Noted", "Scribely", "Recapper"}
+    assert report.complaints  # extracted by the real extraction code, with a fake LLM
+    assert {c.source_type for c in report.complaints} <= {"hn", "app_store"}
     assert {cell.company for cell in report.features} <= names
     assert {t.company for t in report.pricing} <= names
     for cl in report.clusters:
@@ -48,8 +79,8 @@ def test_report_is_internally_consistent(settings, offline_world):
     assert scores == sorted(scores, reverse=True)
 
 
-def test_stats_list_stubbed_steps(settings, offline_world):
-    report = pipeline.run("AI meeting assistants", settings=settings).report
+def test_stats_list_stubbed_steps(settings, offline_world, fake_llm):
+    report = pipeline.run("AI meeting assistants", settings=settings, llm_client=fake_llm).report
     assert "llm" in report.stats
     assert isinstance(report.stats["stubs"], list)
 
