@@ -158,7 +158,7 @@ class HttpClient:
     def _request(self, method, url, *, params=None, json_body=None, headers=None) -> HttpResponse:
         last_error: Exception | None = None
         for attempt in range(1, self._max_attempts + 1):
-            self._throttle(url)
+            self.wait_turn(url)
             try:
                 r = self._client.request(
                     method, url, params=params, json=json_body, headers=headers
@@ -182,7 +182,8 @@ class HttpClient:
                 self._sleep(wait)
         raise FetchError(f"{method} {url} failed after {self._max_attempts} attempts: {last_error}")
 
-    def _throttle(self, url: str) -> None:
+    def wait_turn(self, url: str) -> None:
+        """Block until this host may be contacted again (also used by the browser fallback)."""
         host = urlsplit(url).netloc
         last = self._last_request.get(host)
         if last is not None:

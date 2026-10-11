@@ -26,6 +26,7 @@ from mia.collectors.complaints import COMPLAINT_SOURCES, collect_complaints
 from mia.collectors.web import collect_official
 from mia.config import Settings
 from mia.discovery import discover_competitors
+from mia.llm import LLM
 from mia.rag.chunking import chunk_documents
 from mia.rag.hybrid import HybridIndex
 from mia.report.markdown import render
@@ -42,8 +43,14 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-") or "market"
 
 
-def run(market: str, *, offline: bool = False, settings: Settings | None = None) -> RunResult:
-    runtime.configure(settings=settings, offline=offline)
+def run(
+    market: str,
+    *,
+    offline: bool = False,
+    settings: Settings | None = None,
+    llm_client: LLM | None = None,
+) -> RunResult:
+    runtime.configure(settings=settings, offline=offline, llm_client=llm_client)
     s = runtime.settings()
     stubs.reset()
     started = time.monotonic()

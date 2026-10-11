@@ -71,3 +71,35 @@ def llm(settings, backend) -> LLM:
 def _reset_runtime():
     yield
     runtime._settings, runtime._offline, runtime._llm = None, False, None
+
+
+@pytest.fixture
+def offline_world(monkeypatch):
+    """Point the pipeline's network-bound stages at the fixture documents (Noted, Scribely,
+    Recapper), so end-to-end tests never touch the internet."""
+    from mia import pipeline
+    from mia.schemas import Competitor
+    from tests.fixtures import load_documents
+
+    docs = load_documents()
+    competitors = [
+        Competitor(name="Noted", website="https://noted.example.com"),
+        Competitor(name="Scribely", website="https://scribely.example.com"),
+        Competitor(name="Recapper", website="https://recapper.example.com"),
+    ]
+    monkeypatch.setattr(pipeline, "discover_competitors", lambda market, k=8: competitors[:k])
+    monkeypatch.setattr(
+        pipeline,
+        "collect_official",
+        lambda c: [
+            d for d in docs if d.company == c.name and d.source_type in ("official", "pricing")
+        ],
+    )
+    monkeypatch.setattr(
+        pipeline,
+        "collect_complaints",
+        lambda c, market, source, query=None, limit=40: [
+            d for d in docs if d.company == c.name and d.source_type == source
+        ][:limit],
+    )
+    return {"competitors": competitors, "documents": docs}
