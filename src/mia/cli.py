@@ -79,3 +79,35 @@ def check_access(
         return
     for r in results:
         typer.echo(f"{r.status:>8}  {r.source}: {r.detail}")
+
+
+@app.command()
+def discover(
+    market: str = typer.Argument(..., help='Market to analyze, e.g. "AI meeting assistants".'),
+    k: int = typer.Option(10, "-k", help="Number of competitors to return."),
+) -> None:
+    """Discover competitors and compare them with the gold list, if one exists."""
+    import json
+
+    from mia import runtime
+    from mia.config import REPO_ROOT
+    from mia.discovery import discover_competitors, name_key
+
+    runtime.configure()
+    found = discover_competitors(market, k=k)
+    for i, c in enumerate(found, 1):
+        typer.echo(f"{i:>2}. {c.name:<22} {c.mention_count} sources  {c.website}")
+        typer.echo(f"    {c.one_liner}")
+    usage = runtime.llm().usage
+    typer.echo(f"LLM: {usage.requests} requests, {usage.cache_hits} cache hits")
+
+    slug = "_".join(market.lower().split())
+    gold_path = REPO_ROOT / "eval" / "gold" / f"competitors_{slug}.json"
+    if gold_path.exists() and found:
+        gold = {name_key(n) for n in json.loads(gold_path.read_text())["competitors"]}
+        hits = [c.name for c in found if name_key(c.name) in gold]
+        typer.echo(
+            f"Gold list: {len(hits)}/{len(found)} found competitors are on it "
+            f"(precision {len(hits) / len(found):.0%}); "
+            f"{len(hits)}/{len(gold)} of the gold list found (recall {len(hits) / len(gold):.0%})"
+        )

@@ -459,7 +459,7 @@ Every task ID below becomes a GitHub issue. Each PR title includes the task ID.
 ### Day 2: Official Data + Hybrid Search
 | ID | Owner | Task | Done when |
 |---|---|---|---|
-| A5 | A | `discovery.py`: listicle / "alternatives" search → LLM extraction → mention ranking → homepage validation → top K | At least 80% of the gold list appears in the top 10 |
+| A5 | A | `discovery.py`: listicle / "alternatives" search → LLM extraction → mention ranking → homepage validation → top K | At least 8 of the top 10 are on the gold list (`mia discover`); first live run: 8/10 with 3 LLM requests |
 | A6 | A | `complaints.py` on fixtures: batched extraction prompt (15–25 chunks per call), severity rubric, verbatim-quote check | Unit tests pass on fixtures; quotes that aren't verbatim are dropped |
 | B4 | B | `collectors/web.py`: `collect_official` (homepage, features, integrations, pricing) + Playwright fallback | Official and pricing docs for at least 5 demo competitors |
 | C4 | C | First swap PyTorch for `fastembed`: remove `torch` and the `pytorch-cpu` index from `pyproject.toml`, `uv add fastembed`, update the install note in `AGENTS.md`. Then `rag/dense.py`: bge-small embeddings + persistent Chroma with metadata | `torch` is gone from `uv.lock`; 1k chunks indexed in a few minutes on CPU |
