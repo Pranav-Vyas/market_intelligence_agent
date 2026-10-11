@@ -32,6 +32,11 @@ uv run mia check-access            # or --markdown to paste a fresh table below
 | App reviews (Android) | `google-play-scraper` (added on Day 3) | Skip web-only products | App pages are allowed by robots.txt. |
 | G2 / Capterra / Trustpilot | Search snippets only | Skip | Anti-bot measures and their terms forbid scraping. |
 
+## Official pages: live check (2026-10-11)
+`collect_official` on five demo competitors: Otter.ai, Fireflies.ai, Fathom and Granola returned their pricing page plus 3–5 feature, integration or security pages each. **tl;dv's pricing page is `/app/pricing`, which its robots.txt disallows**, so tl;dv pricing stays "unknown" unless a comparison article states it.
+
+Optional browser rendering for JavaScript-only pages: `uv sync --extra browser && uv run playwright install chromium`. Without it, thin pages are kept and flagged with `meta["thin"]`.
+
 ## Reddit status
 A script app was created on 2026-10-11. Reddit's policy page says API use needs explicit approval, so `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` stay empty until an access request is approved. If you file one, describe the use accurately: non-commercial student project, read-only, low volume, posts analyzed by an LLM to find common complaints, not used for model training.
 

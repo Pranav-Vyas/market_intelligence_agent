@@ -1,5 +1,5 @@
-"""End-to-end run of the pipeline. Works with stubs today and keeps working as modules go real
-(network-dependent modules must then be exercised offline from fixtures or the cache)."""
+"""End-to-end run of the pipeline on the fixture documents (see `offline_world` in conftest).
+Network-bound stages are replaced with fixture data; everything else runs for real."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ SECTIONS = [
 ]
 
 
-def test_run_writes_report_and_json(settings):
+def test_run_writes_report_and_json(settings, offline_world):
     result = pipeline.run("AI meeting assistants", settings=settings)
 
     report_md = (result.run_dir / "report.md").read_text()
@@ -31,12 +31,12 @@ def test_run_writes_report_and_json(settings):
     assert result.run_dir.parent.name == "ai-meeting-assistants"
 
 
-def test_report_is_internally_consistent(settings):
+def test_report_is_internally_consistent(settings, offline_world):
     report = pipeline.run("AI meeting assistants", settings=settings).report
     names = {c.name for c in report.competitors}
     complaint_ids = {c.id for c in report.complaints}
 
-    assert len(report.competitors) >= 1
+    assert names == {"Noted", "Scribely", "Recapper"}
     assert {cell.company for cell in report.features} <= names
     assert {t.company for t in report.pricing} <= names
     for cl in report.clusters:
@@ -48,7 +48,7 @@ def test_report_is_internally_consistent(settings):
     assert scores == sorted(scores, reverse=True)
 
 
-def test_stats_list_stubbed_steps(settings):
+def test_stats_list_stubbed_steps(settings, offline_world):
     report = pipeline.run("AI meeting assistants", settings=settings).report
     assert "llm" in report.stats
     assert isinstance(report.stats["stubs"], list)
