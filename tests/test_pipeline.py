@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import replace
 
 import pytest
 
@@ -30,12 +31,18 @@ def _fake_llm_reply(req) -> str:
                 }
             )
         return json.dumps({"results": results})
+    if req.schema is not None and req.schema.__name__ == "_Taxonomy":
+        names = ["Transcription", "CRM integration", "Calendar integration"]
+        return json.dumps({"features": [{"name": n, "description": n} for n in names]})
+    if req.schema is not None and req.schema.__name__ == "_Judgments":
+        return json.dumps({"judgments": []})
     return "{}"
 
 
 @pytest.fixture
 def fake_llm(settings) -> LLM:
-    return LLM(settings, backends={"fake": FakeBackend(responder=_fake_llm_reply)})
+    s = replace(settings, max_llm_calls_per_run=50)
+    return LLM(s, backends={"fake": FakeBackend(responder=_fake_llm_reply)})
 
 
 SECTIONS = [
