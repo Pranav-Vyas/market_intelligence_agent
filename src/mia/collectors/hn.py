@@ -62,7 +62,7 @@ def to_document(hit: dict, c: Competitor, query: str) -> Document | None:
     url = ITEM_URL.format(id=hit["objectID"])
     created = hit.get("created_at_i")
     return Document(
-        id=doc_id(url),
+        id=doc_id(url, c.name),  # one copy per competitor the comment is about
         url=url,
         source_type="hn",
         company=c.name,

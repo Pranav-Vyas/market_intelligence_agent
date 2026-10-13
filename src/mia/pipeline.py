@@ -63,7 +63,7 @@ def run(
         docs += collect_official(c)
         for source in COMPLAINT_SOURCES:
             docs += collect_complaints(c, market, source, limit=s.max_complaint_docs_per_source)
-    docs = dedupe(docs)  # a comment naming two competitors is collected for both
+    docs = dedupe(docs)  # per company: a comment naming two competitors stays for both
 
     index = HybridIndex()
     index.add(docs)
