@@ -1,5 +1,8 @@
 """Drop duplicate Documents (task B6): the same id (the same URL, or the same review of an app),
-or the same text after normalization. The first copy wins, so order the input by preference."""
+or the same text after normalization. The first copy wins, so order the input by preference.
+
+Duplicates are per company. A comment that names two competitors is collected once for each, and
+both copies stay: complaint extraction keeps only what each copy says about its own company."""
 
 from __future__ import annotations
 
@@ -17,14 +20,14 @@ def text_key(text: str) -> str:
 
 
 def dedupe(docs: list[Document]) -> list[Document]:
-    seen_ids: set[str] = set()
-    seen_texts: set[str] = set()
+    seen_ids: set[tuple[str | None, str]] = set()
+    seen_texts: set[tuple[str | None, str]] = set()
     unique = []
     for doc in docs:
-        key = text_key(doc.text)
-        if doc.id in seen_ids or key in seen_texts:
+        id_key, txt_key = (doc.company, doc.id), (doc.company, text_key(doc.text))
+        if id_key in seen_ids or txt_key in seen_texts:
             continue
-        seen_ids.add(doc.id)
-        seen_texts.add(key)
+        seen_ids.add(id_key)
+        seen_texts.add(txt_key)
         unique.append(doc)
     return unique

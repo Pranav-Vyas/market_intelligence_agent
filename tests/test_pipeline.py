@@ -18,7 +18,8 @@ def _fake_llm_reply(req) -> str:
     """Complaint extraction: quote the first sentence of every text, so quotes are verbatim."""
     if req.schema is not None and req.schema.__name__ == "_Batch":
         results = []
-        for text_id, body in re.findall(r'<text id="(\d+)">\n(.*?)\n</text>', req.prompt, re.S):
+        texts = re.findall(r'<text id="(\d+)"[^>]*>\n(.*?)\n</text>', req.prompt, re.S)
+        for text_id, body in texts:
             text = body.split("\n", 1)[-1].strip()
             first = re.split(r"(?<=[.!?])\s", text)[0]
             summary = "too expensive" if "expensive" in text else "unreliable recording"

@@ -6,6 +6,7 @@ import pytest
 from mia import http, runtime
 from mia.collectors import hn
 from mia.collectors.complaints import collect_complaints
+from mia.collectors.dedupe import dedupe
 from mia.collectors.matching import is_about, market_terms
 from mia.schemas import Competitor
 
@@ -79,6 +80,15 @@ def test_usernames_are_hashed(algolia):
     doc = collect_complaints(OTTER, MARKET, "hn")[0]
     assert doc.meta["author_hash"] != "pg"
     assert "pg" not in doc.model_dump_json()
+
+
+def test_a_comment_about_two_competitors_gets_one_document_per_competitor():
+    text = f"We switched from Otter.ai to Read.ai for meeting notes. {LONG}"
+    otter = hn.to_document(hit("7", text), OTTER, "q")
+    read = hn.to_document(hit("7", text), READ, "q")
+    assert otter.url == read.url
+    assert otter.id != read.id
+    assert len(dedupe([otter, read])) == 2
 
 
 def test_queries_cover_complaint_words_market_words_and_the_name(algolia):

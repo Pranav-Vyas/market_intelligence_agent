@@ -215,6 +215,12 @@ def test_dedupe_drops_repeated_ids_and_texts_and_keeps_the_first():
     ]
 
 
+def test_dedupe_is_per_company():
+    acme = _doc("https://a.example/1", "Otter and Acme both crash.")
+    other = acme.model_copy(update={"company": "Otter"})
+    assert dedupe([acme, other, acme]) == [acme, other]
+
+
 def test_text_key_ignores_case_punctuation_and_spacing():
     assert text_key("Too  expensive!") == text_key("too expensive")
     assert text_key("too expensive") != text_key("too cheap")
