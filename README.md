@@ -20,6 +20,12 @@ uv run mia run "AI meeting assistants"
 The report is written to `data/runs/<market>/<timestamp>/report.md`, with the full data in
 `run.json`.
 
+Each run also saves its search index, so you can look through the evidence yourself:
+```bash
+uv run mia search "pricing too expensive" --company Otter      # -s hn / app_store / pricing ...
+uv run mia index "AI meeting assistants"   # collect and index without the analysis steps
+```
+
 ## Development
 ```bash
 uv run pytest                    # offline tests

@@ -97,6 +97,13 @@ def test_stats_list_stubbed_steps(settings, offline_world, fake_llm):
     assert isinstance(report.stats["stubs"], list)
 
 
+def test_run_saves_the_index_for_search(settings, offline_world, fake_llm):
+    pipeline.run("AI meeting assistants", settings=settings, llm_client=fake_llm)
+    slug, index = pipeline.load_index("AI meeting assistants")
+    assert slug == "ai-meeting-assistants"
+    assert {c.company for c in index.chunks} >= {"Noted", "Scribely", "Recapper"}
+
+
 def test_slugify():
     assert pipeline.slugify("AI Meeting Assistants!") == "ai-meeting-assistants"
     assert pipeline.slugify("???") == "market"

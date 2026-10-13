@@ -31,7 +31,7 @@ from mia.llm import LLM
 from mia.rag.chunking import chunk_documents
 from mia.rag.hybrid import HybridIndex
 from mia.report.markdown import render
-from mia.schemas import COMPLAINT_SOURCE_TYPES, Document, MarketReport
+from mia.schemas import COMPLAINT_SOURCE_TYPES, Competitor, Document, MarketReport
 
 
 @dataclass
@@ -57,16 +57,8 @@ def run(
     started = time.monotonic()
 
     competitors = discover_competitors(market, k=s.max_competitors)
-
-    docs: list[Document] = []
-    for c in competitors:
-        docs += collect_official(c)
-        for source in COMPLAINT_SOURCES:
-            docs += collect_complaints(c, market, source, limit=s.max_complaint_docs_per_source)
-    docs = dedupe(docs)  # per company: a comment naming two competitors stays for both
-
-    index = HybridIndex()
-    index.add(docs)
+    docs = collect(market, competitors)
+    index = build_index(market, docs)
 
     features = build_feature_matrix(competitors, index)
     pricing = [
@@ -111,3 +103,40 @@ def run(
         json.dumps(report.model_dump(mode="json"), indent=2), encoding="utf-8"
     )
     return RunResult(report=report, run_dir=run_dir)
+
+
+def collect(market: str, competitors: list[Competitor]) -> list[Document]:
+    """Official pages and complaints for every competitor."""
+    s = runtime.settings()
+    docs: list[Document] = []
+    for c in competitors:
+        docs += collect_official(c)
+        for source in COMPLAINT_SOURCES:
+            docs += collect_complaints(c, market, source, limit=s.max_complaint_docs_per_source)
+    return dedupe(docs)  # per company: a comment naming two competitors stays for both
+
+
+def index_dir(market: str) -> Path:
+    return runtime.settings().indexes_dir / slugify(market)
+
+
+def build_index(market: str, docs: list[Document]) -> HybridIndex:
+    """Index the documents and save the index for `mia search`, replacing the market's last one."""
+    index = HybridIndex()
+    index.add(docs)
+    index.save(index_dir(market))
+    return index
+
+
+def load_index(market: str | None = None) -> tuple[str, HybridIndex]:
+    """(market slug, index) of a saved index: the market's, or the most recently saved one."""
+    root = runtime.settings().indexes_dir
+    if market:
+        path: Path | None = index_dir(market)
+    else:
+        saved = sorted(root.glob("*/chunks.json"), key=lambda p: p.stat().st_mtime)
+        path = saved[-1].parent if saved else None
+    if path is None or not (path / "chunks.json").exists():
+        target = f'"{market}"' if market else "any market"
+        raise FileNotFoundError(f"No saved index for {target} in {root}. Run `mia index` first.")
+    return path.name, HybridIndex.load(path)
