@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Annotated
 
 import typer
 
@@ -113,3 +114,87 @@ def discover(
             f"(precision {len(hits) / len(found):.0%}); "
             f"{len(hits)}/{len(gold)} of the gold list found (recall {len(hits) / len(gold):.0%})"
         )
+
+
+@app.command()
+def index(
+    market: str = typer.Argument(..., help='Market to index, e.g. "AI meeting assistants".'),
+    offline: bool = typer.Option(
+        False, "--offline", help="Use only cached pages and LLM responses (no network)."
+    ),
+) -> None:
+    """Discover competitors, collect their pages and complaints, and save the search index."""
+    from collections import Counter
+
+    from mia import pipeline, runtime
+
+    runtime.configure(offline=offline)
+    competitors = pipeline.discover_competitors(market, k=runtime.settings().max_competitors)
+    docs = pipeline.collect(market, competitors)
+    built = pipeline.build_index(market, docs)
+
+    counts = Counter((d.company or "(market)", d.source_type) for d in docs)
+    sources = sorted({source for _, source in counts})
+    typer.echo(f"{'Company':<22}" + "".join(f"{s:>10}" for s in sources))
+    for company in dict.fromkeys(c for c, _ in counts):
+        typer.echo(f"{company:<22}" + "".join(f"{counts[company, s]:>10}" for s in sources))
+    typer.echo(
+        f"Indexed {len(docs)} documents as {len(built.chunks)} chunks: {pipeline.index_dir(market)}"
+    )
+
+
+@app.command()
+def search(
+    query: str = typer.Argument(..., help="What to look for."),
+    market: str | None = typer.Option(
+        None, "--market", "-m", help="Market whose saved index to search (default: the latest)."
+    ),
+    company: str | None = typer.Option(
+        None, "--company", "-c", help='Only this competitor, e.g. "Otter".'
+    ),
+    source: Annotated[
+        list[str] | None,
+        typer.Option("--source", "-s", help="Only this source type (repeatable): pricing, hn, ..."),
+    ] = None,
+    k: int = typer.Option(10, "-k", help="Number of results."),
+    no_rerank: bool = typer.Option(False, "--no-rerank", help="Skip the cross-encoder (faster)."),
+) -> None:
+    """Search the saved index of a market (build it with `mia index` or `mia run`)."""
+    from typing import get_args
+
+    from mia import pipeline
+    from mia.discovery import name_key
+    from mia.schemas import SourceType
+
+    try:
+        slug, idx = pipeline.load_index(market)
+    except FileNotFoundError as err:
+        typer.echo(str(err), err=True)
+        raise typer.Exit(1) from err
+
+    if company:
+        companies = sorted({ch.company for ch in idx.chunks if ch.company})
+        match = [c for c in companies if name_key(c) == name_key(company)]
+        match = match or [c for c in companies if company.lower() in c.lower()]
+        if len(match) != 1:
+            typer.echo(f"Unknown company {company!r}. Indexed: {', '.join(companies)}", err=True)
+            raise typer.Exit(1)
+        company = match[0]
+    unknown = [s for s in source or [] if s not in get_args(SourceType)]
+    if unknown:
+        allowed = ", ".join(get_args(SourceType))
+        typer.echo(f"Unknown source {unknown[0]!r}. Use: {allowed}", err=True)
+        raise typer.Exit(1)
+
+    hits = idx.search(
+        query, k=k, company=company, source_types=source or None, rerank=not no_rerank
+    )
+    typer.echo(f"Index: {slug} ({len(idx.chunks)} chunks)")
+    if not hits:
+        typer.echo("No matching chunks.")
+    for i, h in enumerate(hits, 1):
+        ch = h.chunk
+        body = " ".join(ch.text.split("\n", 1)[-1].split())
+        where = f"{ch.company or '(market)'} · {ch.source_type} · {ch.url}"
+        typer.echo(f"{i:>2}. {h.score:.3f}  {where}")
+        typer.echo(f"    {body[:240]}")
