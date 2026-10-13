@@ -17,5 +17,5 @@ FIXTURE_TIME = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def load_documents() -> list[Document]:
-    raw = json.loads((Path(__file__).parent / "documents.json").read_text())
+    raw = json.loads((Path(__file__).parent / "documents.json").read_text(encoding="utf-8"))
     return [Document(id=doc_id(d["url"]), fetched_at=FIXTURE_TIME, **d) for d in raw]

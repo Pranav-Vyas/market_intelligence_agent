@@ -164,7 +164,8 @@ def test_overrides_replace_website_and_pricing_url(world, tmp_path):
         "ai-meeting-assistants:\n"
         "  noted.ai:\n"
         "    website: https://www.noted.example.com\n"
-        "    pricing_url: https://www.noted.example.com/plans\n"
+        "    pricing_url: https://www.noted.example.com/plans\n",
+        encoding="utf-8",
     )
     noted = discover_competitors("AI meeting assistants")[0]
     assert noted.website == "https://www.noted.example.com"

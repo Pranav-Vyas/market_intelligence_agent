@@ -266,7 +266,7 @@ class LLM:
         path = self._cache_path(model, req)
         if path.exists():
             self.usage.cache_hits += 1
-            return json.loads(path.read_text())["text"]
+            return json.loads(path.read_text(encoding="utf-8"))["text"]
         if self.offline:
             raise LLMCacheMiss(f"No cached response for this {model} call (offline mode).")
         if self.usage.requests >= self.settings.max_llm_calls_per_run:
@@ -292,7 +292,8 @@ class LLM:
                     "input_tokens": raw.input_tokens,
                     "output_tokens": raw.output_tokens,
                 }
-            )
+            ),
+            encoding="utf-8",
         )
         return raw.text
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 
-from mia.schemas import Competitor, Document, doc_id
+from mia.schemas import Competitor
 
 COMPETITORS = [
     ("Example Notes", "notes"),
@@ -79,20 +79,4 @@ def pricing_text(company: str) -> str:
     return (
         f"{company} pricing. Free: 300 minutes per month. Pro: ${pro} per seat per month. "
         f"Business: ${pro * 2} per seat per month. Enterprise: contact sales."
-    )
-
-
-def complaint_doc(company: str, source: str, i: int) -> Document:
-    themes = [
-        COMPLAINT_THEMES[pick(f"{company}{source}{i}{j}", len(COMPLAINT_THEMES))] for j in range(2)
-    ]
-    text = " ".join(dict.fromkeys(sentence for _, sentence, _ in themes))
-    url = f"https://{source}.example.com/{company.lower().replace(' ', '-')}/{i}"
-    return Document(
-        id=doc_id(url),
-        url=url,
-        source_type=source,  # type: ignore[arg-type]
-        company=company,
-        title=f"{company} feedback #{i}",
-        text=text,
     )

@@ -51,11 +51,13 @@ SECTIONS = [
 def test_run_writes_report_and_json(settings, offline_world, fake_llm):
     result = pipeline.run("AI meeting assistants", settings=settings, llm_client=fake_llm)
 
-    report_md = (result.run_dir / "report.md").read_text()
+    report_md = (result.run_dir / "report.md").read_text(encoding="utf-8")
     for section in SECTIONS:
         assert section in report_md
 
-    saved = MarketReport.model_validate(json.loads((result.run_dir / "run.json").read_text()))
+    saved = MarketReport.model_validate(
+        json.loads((result.run_dir / "run.json").read_text(encoding="utf-8"))
+    )
     assert saved.market == "AI meeting assistants"
     assert result.run_dir.parent.name == "ai-meeting-assistants"
 

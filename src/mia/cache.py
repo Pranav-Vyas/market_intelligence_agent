@@ -29,14 +29,14 @@ def get(namespace: str, key: Any) -> Any | None:
     path = _path(namespace, key)
     if not path.exists():
         return None
-    return json.loads(path.read_text())["value"]
+    return json.loads(path.read_text(encoding="utf-8"))["value"]
 
 
 def put(namespace: str, key: Any, value: Any) -> None:
     path = _path(namespace, key)
     path.parent.mkdir(parents=True, exist_ok=True)
     record = {"key": key, "stored_at": utcnow().isoformat(), "value": value}
-    path.write_text(json.dumps(record))
+    path.write_text(json.dumps(record), encoding="utf-8")
 
 
 def get_or_fetch(namespace: str, key: Any, fetch: Callable[[], Any]) -> Any:

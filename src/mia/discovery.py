@@ -284,7 +284,7 @@ def load_overrides(market: str) -> dict[str, dict]:
     path = REPO_ROOT / "overrides.yaml"
     if not path.exists():
         return {}
-    data = yaml.safe_load(path.read_text()) or {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     slug = re.sub(r"[^a-z0-9]+", "-", market.lower()).strip("-")
     return data.get(slug) or {}
 

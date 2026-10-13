@@ -104,7 +104,9 @@ def discover(
     slug = "_".join(market.lower().split())
     gold_path = REPO_ROOT / "eval" / "gold" / f"competitors_{slug}.json"
     if gold_path.exists() and found:
-        gold = {name_key(n) for n in json.loads(gold_path.read_text())["competitors"]}
+        gold = {
+            name_key(n) for n in json.loads(gold_path.read_text(encoding="utf-8"))["competitors"]
+        }
         hits = [c.name for c in found if name_key(c.name) in gold]
         typer.echo(
             f"Gold list: {len(hits)}/{len(found)} found competitors are on it "

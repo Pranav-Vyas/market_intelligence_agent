@@ -44,6 +44,14 @@ class Settings:
 
     data_dir: Path = field(default_factory=lambda: Path(_env("MIA_DATA_DIR") or REPO_ROOT / "data"))
 
+    # Local retrieval models (fastembed, CPU). Downloaded to data/models on first use.
+    embed_model: str = field(
+        default_factory=lambda: _env("MIA_EMBED_MODEL", "BAAI/bge-small-en-v1.5")
+    )
+    rerank_model: str = field(
+        default_factory=lambda: _env("MIA_RERANK_MODEL", "Xenova/ms-marco-MiniLM-L-6-v2")
+    )
+
     # Agent and collection limits (SPEC.md §3, §5)
     min_competitors: int = 5
     max_competitors: int = 8
@@ -76,6 +84,10 @@ class Settings:
     @property
     def snapshots_dir(self) -> Path:
         return self.data_dir / "snapshots"
+
+    @property
+    def models_dir(self) -> Path:
+        return self.data_dir / "models"
 
 
 @cache

@@ -23,6 +23,7 @@ from mia.analysis.pricing import extract_pricing
 from mia.analysis.scoring import score_opportunities
 from mia.analysis.verify import verify
 from mia.collectors.complaints import COMPLAINT_SOURCES, collect_complaints
+from mia.collectors.dedupe import dedupe
 from mia.collectors.web import collect_official
 from mia.config import Settings
 from mia.discovery import discover_competitors
@@ -62,6 +63,7 @@ def run(
         docs += collect_official(c)
         for source in COMPLAINT_SOURCES:
             docs += collect_complaints(c, market, source, limit=s.max_complaint_docs_per_source)
+    docs = dedupe(docs)  # a comment naming two competitors is collected for both
 
     index = HybridIndex()
     index.add(docs)
@@ -104,6 +106,8 @@ def run(
 
     run_dir = s.runs_dir / slugify(market) / datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "report.md").write_text(render(report))
-    (run_dir / "run.json").write_text(json.dumps(report.model_dump(mode="json"), indent=2))
+    (run_dir / "report.md").write_text(render(report), encoding="utf-8")
+    (run_dir / "run.json").write_text(
+        json.dumps(report.model_dump(mode="json"), indent=2), encoding="utf-8"
+    )
     return RunResult(report=report, run_dir=run_dir)

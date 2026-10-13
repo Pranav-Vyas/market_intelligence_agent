@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
 from mia import runtime
@@ -71,6 +73,49 @@ def llm(settings, backend) -> LLM:
 def _reset_runtime():
     yield
     runtime._settings, runtime._offline, runtime._llm = None, False, None
+
+
+class FakeEmbedder:
+    """Bag-of-words vectors: texts that share words are close. No model download."""
+
+    name = "fake-embedder"
+    dim = 64
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        return [self.embed_query(t) for t in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        from mia.rag.bm25 import tokenize
+
+        vector = [0.0] * self.dim
+        for token in tokenize(text):
+            vector[int(hashlib.sha1(token.encode()).hexdigest(), 16) % self.dim] += 1.0
+        norm = sum(x * x for x in vector) ** 0.5 or 1.0
+        return [x / norm for x in vector]
+
+
+class FakeReranker:
+    """Scores a text by how many query words it contains."""
+
+    def scores(self, query: str, texts: list[str]) -> list[float]:
+        from mia.rag.bm25 import tokenize
+
+        terms = set(tokenize(query))
+        return [float(len(terms & set(tokenize(t)))) for t in texts]
+
+
+@pytest.fixture(autouse=True)
+def _local_models(monkeypatch, tmp_path, request):
+    """Retrieval never downloads a model in tests, and its embedding cache stays in tmp_path.
+    Tests marked `network` use the real models."""
+    if "network" in request.keywords:
+        return
+    from mia.rag import dense, rerank
+
+    monkeypatch.setattr(dense, "default_embedder", FakeEmbedder)
+    monkeypatch.setattr(rerank, "default_reranker", FakeReranker)
+    if runtime._settings is None:
+        monkeypatch.setattr(runtime, "_settings", Settings(data_dir=tmp_path / "data"))
 
 
 @pytest.fixture

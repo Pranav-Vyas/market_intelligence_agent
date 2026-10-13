@@ -6,7 +6,7 @@ features, pricing, complaint clusters and ranked market gaps. Full plan: `SPEC.m
 
 ## Commands
 ```bash
-uv sync                                   # install (CPU-only PyTorch is preconfigured)
+uv sync                                   # install (no PyTorch: retrieval models run on fastembed)
 uv run mia run "AI meeting assistants"    # full pipeline → data/runs/<market>/<time>/report.md
 uv run mia run "..." --offline            # cached pages and LLM responses only
 uv run mia models                         # Gemini model IDs your key can use

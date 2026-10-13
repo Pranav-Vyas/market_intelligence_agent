@@ -11,7 +11,7 @@ quotes.
 ## Quick start
 ```bash
 # 1. Install uv: https://docs.astral.sh/uv/
-uv sync                          # Python 3.12 + dependencies (CPU-only PyTorch)
+uv sync                          # Python 3.12 + dependencies (no PyTorch needed)
 cp .env.example .env             # add your free Gemini key, then:
 uv run mia models                # pick model IDs for MIA_MODEL_BULK / MIA_MODEL_SMART in .env
 
