@@ -36,6 +36,8 @@ def _fake_llm_reply(req) -> str:
         return json.dumps({"features": [{"name": n, "description": n} for n in names]})
     if req.schema is not None and req.schema.__name__ == "_Judgments":
         return json.dumps({"judgments": []})
+    if req.schema is not None and req.schema.__name__ == "_Pricing":
+        return json.dumps({"tiers": [{"name": "Pro", "bucket": "pro", "monthly_usd": 9}]})
     return "{}"
 
 
