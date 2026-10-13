@@ -20,7 +20,7 @@ from mia.schemas import Competitor, Document, PricingTier
 
 log = logging.getLogger(__name__)
 
-MAX_CHARS = 12000  # pricing-page text sent per company
+MAX_CHARS = 20000  # pricing-page text sent per company
 MAX_LIMITS = 4
 
 SYSTEM = """You read a software product's pricing pages and list its plans.
@@ -30,6 +30,8 @@ Rules:
 - "bucket": "free" (no charge), "pro" (paid plan for individuals or small teams), "business"
   (team or company plan with admin features), "enterprise" (custom price or contact sales),
   "other" (add-ons and anything else).
+- Use only what the sources say. Never use what you know about the product from elsewhere:
+  prices change, and the page is the record.
 - Prices are US dollars per month, copied as the page writes them. "monthly_usd" is the price
   when billed monthly; "annual_monthly_usd" is the per-month price when billed annually.
   Leave a price empty when the page doesn't show it that way. Never calculate a price, for

@@ -10,6 +10,7 @@ Without it, the short text is kept and the page is marked `meta["thin"] = True`.
 from __future__ import annotations
 
 import logging
+import re
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
@@ -106,12 +107,13 @@ def _fetch(url: str, source_type: SourceType, company: str | None) -> tuple[Docu
         return None, ""
 
     html = resp.text
-    title, text = extract_text(html)
+    keep_prices = source_type == "pricing"
+    title, text = extract_text(html, keep_prices=keep_prices)
     meta: dict = {}
     if len(text) < MIN_TEXT_CHARS:
         rendered = _renderer(resp.final_url)
         if rendered:
-            r_title, r_text = extract_text(rendered)
+            r_title, r_text = extract_text(rendered, keep_prices=keep_prices)
             if len(r_text) > len(text):
                 html, title, text = rendered, r_title or title, r_text
                 meta["rendered"] = True
@@ -133,9 +135,12 @@ def _fetch(url: str, source_type: SourceType, company: str | None) -> tuple[Docu
     return doc, html
 
 
-def extract_text(html: str) -> tuple[str, str]:
+def extract_text(html: str, *, keep_prices: bool = False) -> tuple[str, str]:
     """Return (title, main text as Markdown). Falls back to plain page text when trafilatura
-    finds no main content, which happens on pricing pages built from cards and tables."""
+    finds no main content, which happens on pricing pages built from cards and tables.
+
+    With `keep_prices`, the plain page text is also used when it shows more prices: main-content
+    extraction often drops the plan cards and keeps only the FAQ around them."""
     text = trafilatura.extract(
         html,
         output_format="markdown",
@@ -144,13 +149,22 @@ def extract_text(html: str) -> tuple[str, str]:
         include_comments=False,
         favor_recall=True,
     )
-    if not text or len(text) < MIN_TEXT_CHARS:
+    text = text or ""
+    if len(text) < MIN_TEXT_CHARS or keep_prices:
         plain = trafilatura.html2txt(html) or ""
-        if len(plain) > len(text or ""):
+        more_prices = keep_prices and _price_count(plain) > _price_count(text)
+        if more_prices or (len(text) < MIN_TEXT_CHARS and len(plain) > len(text)):
             text = plain
     meta = trafilatura.extract_metadata(html)
     title = (meta.title if meta and meta.title else "") or ""
-    return title.strip(), (text or "").strip()
+    return title.strip(), text.strip()
+
+
+_PRICE = re.compile(r"[$€£]\s*\d")
+
+
+def _price_count(text: str) -> int:
+    return len(_PRICE.findall(text))
 
 
 # ---- links -----------------------------------------------------------------------------------

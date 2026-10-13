@@ -150,3 +150,13 @@ def test_shallow_pages_first_and_at_most_two_per_section():
         "https://acme.example.com/integrations",
         "https://acme.example.com/integrations/asana",
     ]
+
+
+def test_pricing_pages_keep_plan_cards_that_main_content_extraction_drops(monkeypatch):
+    cards = "<div>Pro $12 per seat</div><div>Team $20 per seat</div>"
+    html = page("Pricing", f"{cards}<p>{FILLER}</p>")
+    faq = f"Frequently asked questions. {FILLER}"  # what trafilatura sometimes keeps
+    monkeypatch.setattr(web.trafilatura, "extract", lambda *a, **k: faq)
+    assert "$12" not in web.extract_text(html)[1]
+    assert "$12" in web.extract_text(html, keep_prices=True)[1]
+    assert "$20" in web.extract_text(html, keep_prices=True)[1]
