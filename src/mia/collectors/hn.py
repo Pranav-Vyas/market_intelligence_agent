@@ -1,9 +1,10 @@
 """Hacker News comments that mention a competitor (task B5), from the Algolia HN Search API.
 
 The API is free and needs no key. Algolia matches every word of the query, so we ask for the
-name next to complaint words first ("otter.ai cancel"), then next to the market's own words
-("otter meeting"), then the name alone, and stop as soon as there are enough comments. Each
-comment must pass `matching.is_about`, because many product names are ordinary words.
+name next to complaint words first ("otter.ai cancel"), then the product's domain, then the name
+next to the market's own words ("otter meeting"), then the name alone, and stop as soon as there
+are enough comments. Each comment must pass `matching.is_about`, because many product names are
+ordinary words.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import re
 from datetime import UTC, datetime
 
 from mia import cache, http
-from mia.collectors.matching import author_hash, is_about, market_terms, plain_name
+from mia.collectors.matching import author_hash, is_about, market_terms, plain_name, site
 from mia.schemas import Competitor, Document, doc_id
 
 log = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ def queries(c: Competitor, market: str, query: str | None = None) -> list[str]:
         return [f"{name} {query}"]
     short = plain_name(c) or name
     out = [f"{name} {word}" for word in COMPLAINT_WORDS]
+    out.append(site(c.website))  # "fathom.ai" finds comments the ordinary word "Fathom" can't
     out += [f"{short} {term}" for term in market_terms(market)]
     out.append(name)
     return list(dict.fromkeys(out))

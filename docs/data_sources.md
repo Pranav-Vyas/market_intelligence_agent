@@ -36,19 +36,26 @@ uv run mia check-access            # or --markdown to paste a fresh table below
 
 Optional browser rendering for JavaScript-only pages: `uv sync --extra browser && uv run playwright install chromium`. Without it, thin pages are kept and flagged with `meta["thin"]`.
 
-## Complaints: live check (2026-10-13)
-`collect_complaints` on seven demo competitors, limit 40 per source. App reviews are 1–3 stars
-only, at least 40 characters.
+## Complaints: live check (2026-10-15)
+`uv run mia index "AI meeting assistants"` then `uv run mia stats`. Limit 40 per source. App
+reviews are App Store only (five storefronts), 1–3 stars, at least 40 characters. The minimum is
+15 complaint documents per competitor (`min_complaint_docs_per_company`).
 
-| Competitor | HN comments | App reviews (Apple + Play) | Notes |
-|---|---|---|---|
-| Otter.ai | 39 | 40 (20 + 20) | |
-| Fireflies.ai | 22 | 40 (20 + 20) | |
-| Granola | 33 | 40 (21 + 19) | |
-| Read.ai | 14 | 18 (7 + 11) | |
-| Fellow | 5 | 24 (10 + 14) | The 5 HN comments are false positives ("Visiting Fellow") |
-| tl;dv | 5 | 0 | No iOS app found; its Play app has no low-rated reviews |
-| Fathom | 2 | 0 | Desktop product; its iOS app has almost no reviews |
+| Competitor | HN comments | App Store reviews | Pricing page | Meets minimums |
+|---|---|---|---|---|
+| Otter | 39 | 40 | yes | yes |
+| Fireflies | 22 | 40 | yes | yes |
+| Granola | 40 | 40 | yes | yes |
+| Krisp | 40 | 13 | yes | yes |
+| Read.ai | 14 | 12 | yes | yes |
+| tl;dv | 12 | 0 | no | **no**: no iOS reviews; its only pricing page (`/app/pricing`) is disallowed by robots.txt, and `/pricing` is a 404 |
+| Avoma | 2 | 5 | yes | **no**: its iOS app has 16 ratings in total |
+| Fathom | 3 | 0 | yes | **no**: its iOS app has 2 ratings; most HN comments name the old domain fathom.video |
+
+Without Reddit, Google Play and review sites, these three have little public complaint data we
+are allowed to collect. They stay in the report (they matter for feature coverage), and their
+complaints count as weak evidence. Searching HN for each product's domain (e.g. "tldv.io") raised
+tl;dv from 5 to 12 documents.
 
 Names that are ordinary words are the weak spot on Hacker News. `collectors/matching.py`
 requires the product's domain, or the name close to a word from the market name, which removes
