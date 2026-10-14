@@ -30,7 +30,6 @@ def check_all() -> list[AccessResult]:
         ("Reddit official API", _reddit_api),
         ("Reddit public JSON", _reddit_json),
         ("Apple App Store reviews (RSS)", _apple),
-        ("Google Play pages", _google_play),
     ]
     results = []
     for name, check in checks:
@@ -132,13 +131,6 @@ def _apple() -> AccessResult:
         return AccessResult("", "error", f"Review feed HTTP {feed.status}")
     entries = feed.json().get("feed", {}).get("entry", [])
     return AccessResult("", "works", f"{len(entries)} recent reviews for {app_name} ({app_id})")
-
-
-def _google_play() -> AccessResult:
-    url = "https://play.google.com/store/apps/details?id=com.google.android.apps.docs&hl=en"
-    resp = http.get(url, use_cache=False)
-    status = "works" if resp.ok else "error"
-    return AccessResult("", status, f"App page HTTP {resp.status}; robots.txt allows app pages")
 
 
 def as_markdown(results: list[AccessResult]) -> str:

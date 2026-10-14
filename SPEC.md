@@ -261,7 +261,7 @@ Evidence: "[...] it keeps creating duplicate events in GCal [...]" (App Store re
 | Reddit | Complaints | **Only if Reddit approves our API request.** Its Responsible Builder Policy requires approval before any API use, and restricts mining its content and research done outside its Researchers Program | Optional | **No workaround.** We don't fetch Reddit pages (robots.txt disallows it) and don't mine Reddit search snippets either. HN and the app stores cover complaints (see `docs/data_sources.md`) |
 | GitHub issues | Complaints, for products with public repos | GitHub REST API | Optional | Skip products without public repos |
 | Hacker News | Complaints from technical users | Algolia HN Search API (free, no key) | P0 | — |
-| App stores | Complaints and ratings | `google-play-scraper`; Apple customer-reviews RSS (JSON), confirmed working on Day 1 | P0 | Skip web-only products |
+| App stores | Complaints and ratings | Apple customer-reviews RSS (JSON) across the US, UK, Canada, Australia and India storefronts. Google Play is **not** used: its review endpoint is under `/_`, which robots.txt disallows | P0 | Skip web-only products |
 | Comparison / "X vs Y" articles | Discovery, feature cross-check | Search → trafilatura | P1 | — |
 | G2 / Capterra / Trustpilot | Reviews | **Don't scrape.** They use anti-bot measures and their ToS forbids it. Use search-result snippets only. | P2 | Skip |
 | News | Context (funding, launches) | Tavily news search | Stretch | — |
@@ -473,7 +473,7 @@ Every task ID below becomes a GitHub issue. Each PR title includes the task ID.
 | A7 | A | `features.py`: LLM proposes 10–15 canonical features from official pages, then judges each company × feature with a quote (one call per company) | Matrix for at least 5 competitors |
 | A8 | A | `pricing.py`: structured extraction. Every price must appear in the page text (regex check) or it is dropped | Pricing table for at least 5 competitors |
 | B5 | B | `hn.py`: Algolia queries like "{name} problem / issue / cancel / alternative". Add `reddit.py` only if Reddit has approved API access by then | At least 15 complaint docs for at least 4 competitors (with B6's app-store reviews) |
-| B6 | B | `appstores.py` (Google Play + Apple RSS) + `dedupe.py` (URL + normalized-text hash) | Reviews collected for competitors that have apps |
+| B6 | B | `appstores.py` (Apple RSS; Google Play dropped, see §5) + `dedupe.py` (URL + normalized-text hash) | Reviews collected for competitors that have apps |
 | C6 | C | `rag/rerank.py`: fastembed cross-encoder over the hybrid top 30 | Under about 2 seconds per query on CPU |
 | C7 | C | Index the real data collected so far; `mia search` CLI with filters; sanity-check results across companies and sources | `mia search "pricing too expensive" --company Otter` returns sensible chunks |
 
