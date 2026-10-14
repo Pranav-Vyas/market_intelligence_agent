@@ -5,5 +5,4 @@
 #   Granola:
 #     website: https://www.granola.ai
 #     pricing_url: https://www.granola.ai/pricing
-#     apple_app_id: "6739429409"        # when the wrong app (or none) is found in a store
-#     google_play_id: ai.granola
+#     apple_app_id: "6739429409"        # when the wrong app (or none) is found in the App Store

@@ -17,7 +17,6 @@ uv run mia check-access            # or --markdown to paste a fresh table below
 | Reddit official API | no key | Register a script app at reddit.com/prefs/apps; new apps may need Reddit's approval |
 | Reddit public JSON | blocked | robots.txt disallows `https://www.reddit.com/search.json` |
 | Apple App Store reviews (RSS) | works | 50 recent reviews for Otter Transcribe Voice Notes (1276437113) |
-| Google Play pages | works | App page HTTP 200; robots.txt allows app pages |
 
 ## Decisions
 
@@ -28,8 +27,8 @@ uv run mia check-access            # or --markdown to paste a fresh table below
 | Hacker News complaints | Algolia HN Search API | — | Free, no key, generous limits. |
 | Reddit complaints | Official API, **only if Reddit approves our request** | None: Reddit is left out | Reddit's Responsible Builder Policy (Reddit Help → Developer Platform & Data API Usage) requires approval before any API use, restricts "commercial and non-commercial mining", and says research using Reddit data outside its Researchers Program violates the policy. robots.txt also disallows fetching pages. So we don't fetch Reddit pages and don't mine Reddit search snippets. |
 | GitHub issues (optional) | GitHub REST API | Skip products without public repos | Useful for open-source or developer-facing products. |
-| App reviews (iOS) | Apple iTunes search API → customer-reviews RSS (JSON) | — | The RSS feed returns up to 50 recent reviews per page. |
-| App reviews (Android) | `google-play-scraper` for the app page and its reviews | Skip web-only products | App pages are allowed by robots.txt. **`/store/search` is disallowed**, so the library's `search()` is never used; the app is found from the store link on the vendor's homepage or through our own web search. |
+| App reviews (iOS) | Apple iTunes search API → customer-reviews RSS (JSON) | — | Up to 50 recent reviews per page, 4 pages per storefront. Each country's App Store has its own reviews, so we read the US, UK, Canada, Australia and India storefronts until 40 low-rated reviews are found. |
+| App reviews (Android) | **Not used** | — | `google-play-scraper` fetches reviews from `play.google.com/_/PlayStoreUi/data/batchexecute`, and play.google.com's robots.txt has `Disallow: /_`. Only the app *pages* are allowed, and they don't contain the reviews. The extra Apple storefronts replace most of what Play gave us. |
 | G2 / Capterra / Trustpilot | Search snippets only | Skip | Anti-bot measures and their terms forbid scraping. |
 
 ## Official pages: live check (2026-10-11)
@@ -53,8 +52,8 @@ only, at least 40 characters.
 
 Names that are ordinary words are the weak spot on Hacker News. `collectors/matching.py`
 requires the product's domain, or the name close to a word from the market name, which removes
-most unrelated comments but not all. Wrong app in a store? Set `apple_app_id` or
-`google_play_id` for the company in `overrides.yaml`.
+most unrelated comments but not all. Wrong app in the App Store? Set `apple_app_id` for the
+company in `overrides.yaml`.
 
 ## Reddit status
 A script app was created on 2026-10-11. Reddit's policy page says API use needs explicit approval, so `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` stay empty until an access request is approved. If you file one, describe the use accurately: non-commercial student project, read-only, low volume, posts analyzed by an LLM to find common complaints, not used for model training.

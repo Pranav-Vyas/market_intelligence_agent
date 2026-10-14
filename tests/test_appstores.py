@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import httpx
 import pytest
 
@@ -7,7 +9,7 @@ from mia import http, runtime
 from mia.collectors import appstores
 from mia.collectors.complaints import collect_complaints
 from mia.collectors.dedupe import dedupe, text_key
-from mia.schemas import Competitor, Document, SearchResult, doc_id
+from mia.schemas import Competitor, Document, doc_id
 
 MARKET = "AI meeting assistants"
 ACME = Competitor(name="Acme", website="https://acme.example.com")
@@ -31,37 +33,23 @@ def entry(review_id: str, rating: int, title: str, content: str, author: str = "
     }
 
 
-APPLE_PAGES = {
-    1: [
+FEEDS = {  # (country, page) -> entries
+    ("us", 1): [
+        {"im:name": {"label": "Acme Notes"}},  # older feeds start with the app itself
         entry("a1", 1, "Keeps crashing", f"Crashes when a meeting starts. {LONG}"),
         entry("a2", 5, "Love it", f"Best notes app I have used. {LONG}"),  # not a complaint
         entry("a3", 2, "Meh", "Bad."),  # too short
     ],
-    2: [entry("a4", 3, "Calendar sync", f"Duplicate calendar events every week. {LONG}")],
+    ("us", 2): [entry("a4", 3, "Calendar sync", f"Duplicate calendar events every week. {LONG}")],
+    ("gb", 1): [entry("g1", 1, "Battery", f"Battery drain is terrible. {LONG}", "John Doe")],
+    ("ca", 1): entry("c1", 2, "Login", f"Logs me out every single day. {LONG}"),  # one review
 }
-
-PLAY_REVIEWS = [
-    {"id": "p1", "author": "John Doe", "text": f"Battery drain is terrible. {LONG}", "rating": 1},
-    {"id": "p2", "author": "Ann", "text": f"Works great for me every day. {LONG}", "rating": 4},
-    {  # the same review as Apple's a1, posted to both stores
-        "id": "p3",
-        "author": "Bo",
-        "text": f"Keeps crashing. Crashes when a meeting starts. {LONG}",
-        "rating": 2,
-    },
-]
 
 
 @pytest.fixture
 def stores(settings, monkeypatch):
     runtime.configure(settings=settings)
-    state = {
-        "home": HOME_WITH_LINKS,
-        "itunes": [],
-        "requests": [],
-        "play_calls": [],
-        "play_apps": {},
-    }
+    state = {"home": HOME_WITH_LINKS, "itunes": [], "requests": []}
 
     def handler(request: httpx.Request) -> httpx.Response:
         host, path = request.url.host, request.url.path
@@ -72,45 +60,37 @@ def stores(settings, monkeypatch):
             return httpx.Response(200, html=state["home"])
         if path == "/search":
             return httpx.Response(200, json={"results": state["itunes"]})
-        for page, entries in APPLE_PAGES.items():
-            if f"/page={page}/" in path:
-                return httpx.Response(200, json={"feed": {"entry": entries}})
-        return httpx.Response(200, json={"feed": {}})
+        m = re.match(r"/(\w+)/rss/customerreviews/page=(\d+)/id=111/", path)
+        entries = FEEDS.get((m.group(1), int(m.group(2))), []) if m else []
+        return httpx.Response(200, json={"feed": {"entry": entries} if entries else {}})
 
     client = http.HttpClient(transport=httpx.MockTransport(handler), sleep=lambda s: None)
     monkeypatch.setattr(http, "_default", client)
-
-    def play_reviews(app_id: str) -> list[dict]:
-        state["play_calls"].append(("reviews", app_id))
-        return [{**r, "version": "9", "at": "2026-09-29T08:00:00"} for r in PLAY_REVIEWS]
-
-    def play_app(app_id: str) -> dict:
-        state["play_calls"].append(("app", app_id))
-        return state["play_apps"][app_id]
-
-    monkeypatch.setattr(appstores, "_PLAY_FETCHERS", {"app": play_app, "reviews": play_reviews})
-    monkeypatch.setattr(appstores, "search", lambda query, k=5: [])
     return state
 
 
-def test_collects_low_rated_reviews_from_both_stores(stores):
+def test_collects_low_rated_reviews_from_several_storefronts(stores):
     docs = collect_complaints(ACME, MARKET, "app_store")
-    assert [(d.meta["store"], d.meta["rating"]) for d in docs] == [
-        ("apple", 1),
-        ("google_play", 1),
-        ("apple", 3),
-        # the second Play review repeats an Apple review word for word, so it is dropped
+    assert [(d.meta["country"], d.title) for d in docs] == [
+        ("us", "Keeps crashing"),
+        ("us", "Calendar sync"),
+        ("gb", "Battery"),
+        ("ca", "Login"),
     ]
-    apple = docs[0]
-    assert apple.source_type == "app_store"
-    assert apple.company == "Acme"
-    assert apple.url == "https://apps.apple.com/us/app/id111"
-    assert apple.id == doc_id(apple.url, "a1")
-    assert apple.title == "Keeps crashing"
-    assert apple.text.startswith("Keeps crashing\nCrashes when a meeting starts.")
-    assert apple.published_at is not None
-    assert docs[1].url == "https://play.google.com/store/apps/details?id=com.acme.notes"
-    assert len({d.id for d in docs}) == 3
+    first = docs[0]
+    assert first.source_type == "app_store"
+    assert first.company == "Acme"
+    assert first.url == "https://apps.apple.com/us/app/id111"
+    assert first.id == doc_id(first.url, "a1")
+    assert first.text.startswith("Keeps crashing\nCrashes when a meeting starts.")
+    assert first.published_at is not None
+    assert first.meta["rating"] == 1
+    assert docs[2].url == "https://apps.apple.com/gb/app/id111"
+
+
+def test_google_play_is_never_contacted(stores):
+    collect_complaints(ACME, MARKET, "app_store")
+    assert not any("play.google.com" in r for r in stores["requests"])
 
 
 def test_usernames_are_hashed(stores):
@@ -119,12 +99,16 @@ def test_usernames_are_hashed(stores):
     assert "John Doe" not in dumped
 
 
-def test_limit_and_cache(stores):
+def test_limit_stops_reading_more_storefronts(stores):
     assert len(collect_complaints(ACME, MARKET, "app_store", limit=2)) == 2
-    requests, play_calls = len(stores["requests"]), len(stores["play_calls"])
-    assert len(collect_complaints(ACME, MARKET, "app_store", limit=2)) == 2
-    assert len(stores["requests"]) == requests
-    assert len(stores["play_calls"]) == play_calls
+    assert not any("/gb/" in r for r in stores["requests"])
+
+
+def test_second_run_is_served_from_the_cache(stores):
+    collect_complaints(ACME, MARKET, "app_store")
+    n = len(stores["requests"])
+    assert len(collect_complaints(ACME, MARKET, "app_store")) == 4
+    assert len(stores["requests"]) == n
 
 
 def test_query_keeps_only_matching_reviews(stores):
@@ -132,7 +116,7 @@ def test_query_keeps_only_matching_reviews(stores):
     assert [d.title for d in docs] == ["Calendar sync"]
 
 
-def test_apple_search_skips_other_products_with_the_same_name(stores):
+def test_app_store_search_skips_other_products_with_the_same_name(stores):
     stores["home"] = "<html><body>No store links here.</body></html>"
     stores["itunes"] = [
         {"trackId": 1, "trackName": "Acme", "sellerName": "Acme Kettles", "description": "Brew."},
@@ -143,52 +127,26 @@ def test_apple_search_skips_other_products_with_the_same_name(stores):
             "description": "Notes for every meeting.",
         },
     ]
-    assert appstores.find_apps(ACME, MARKET) == {"apple": "2", "google_play": None}
+    assert appstores.find_app(ACME, MARKET) == "2"
 
 
-def test_apple_search_accepts_an_app_from_the_same_developer_site(stores):
+def test_app_store_search_accepts_an_app_from_the_same_developer_site(stores):
     stores["home"] = "<html><body>No store links here.</body></html>"
     stores["itunes"] = [
         {"trackId": 1, "trackName": "Acme", "sellerName": "Acme Kettles", "description": "Brew."},
         {"trackId": 7, "trackName": "Notes", "sellerUrl": "https://www.acme.example.com/app"},
     ]
-    assert appstores.find_apps(ACME, MARKET)["apple"] == "7"
+    assert appstores.find_app(ACME, MARKET) == "7"
 
 
-def test_google_play_app_is_found_by_web_search_and_checked(stores, monkeypatch):
-    stores["home"] = "<html><body>No store links here.</body></html>"
-    stores["play_apps"] = {
-        "com.kettles.acme": {"title": "Acme", "developer": "Acme Kettles", "description": "Brew."},
-        "com.acme.notes": {
-            "title": "Acme Notes",
-            "developer": "Acme Inc.",
-            "website": "https://www.acme.example.com/",
-            "description": "Notes.",
-        },
-    }
-    play = "https://play.google.com/store/apps/details?id="
-    results = [
-        SearchResult(url=f"{play}com.kettles.acme", title="Acme", snippet=""),
-        SearchResult(url=f"{play}com.acme.notes&hl=en", title="Acme Notes", snippet=""),
-    ]
-    monkeypatch.setattr(appstores, "search", lambda query, k=5: results)
-    assert appstores.find_apps(ACME, MARKET)["google_play"] == "com.acme.notes"
-    # google-play-scraper's own search is never used: robots.txt disallows /store/search
-    assert all("store/search" not in r for r in stores["requests"])
+def test_override_wins(stores, monkeypatch):
+    monkeypatch.setattr(appstores, "load_overrides", lambda market: {"acme": {"apple_app_id": 9}})
+    assert appstores.find_app(ACME, MARKET) == "9"
 
 
 def test_no_app_means_no_documents(stores):
     stores["home"] = "<html><body>No store links here.</body></html>"
     assert collect_complaints(ACME, MARKET, "app_store") == []
-
-
-def test_google_play_failure_is_not_fatal(stores, monkeypatch):
-    def broken(app_id: str):
-        raise RuntimeError("layout changed")
-
-    monkeypatch.setattr(appstores, "_PLAY_FETCHERS", {"app": broken, "reviews": broken})
-    docs = collect_complaints(ACME, MARKET, "app_store")
-    assert {d.meta["store"] for d in docs} == {"apple"}
 
 
 def test_offline_without_a_cache_returns_no_documents(settings):
