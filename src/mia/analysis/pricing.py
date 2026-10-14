@@ -13,8 +13,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from mia import runtime
 from mia.analysis.complaints import quote_in_text
-from mia.llm import LLMOutputError
+from mia.llm import RECOVERABLE
 from mia.runtime import llm
 from mia.schemas import Competitor, Document, PricingTier
 
@@ -67,8 +68,8 @@ def extract_pricing(c: Competitor, docs: list[Document]) -> list[PricingTier]:
     )
     try:
         result = llm().extract(prompt, schema=_Pricing, system=SYSTEM, model="bulk")
-    except LLMOutputError as err:
-        log.warning("%s: no pricing: %s", c.name, err)
+    except RECOVERABLE as err:
+        runtime.warn(f"Pricing: none for {c.name} ({err})")
         return []
 
     tiers: list[PricingTier] = []

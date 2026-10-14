@@ -12,7 +12,8 @@ import re
 
 from pydantic import BaseModel
 
-from mia.llm import LLMOutputError
+from mia import runtime
+from mia.llm import RECOVERABLE
 from mia.runtime import llm
 from mia.schemas import COMPLAINT_SOURCE_TYPES, Chunk, Complaint
 
@@ -68,8 +69,8 @@ def _extract_batch(batch: list[Chunk]) -> list[Complaint]:
     )
     try:
         result = llm().extract(prompt, schema=_Batch, system=SYSTEM, model="bulk")
-    except LLMOutputError as err:
-        log.warning("Skipping a batch of %d chunks: %s", len(batch), err)
+    except RECOVERABLE as err:
+        runtime.warn(f"Complaints: skipped a batch of {len(batch)} chunks ({err})")
         return []
 
     out: list[Complaint] = []

@@ -104,6 +104,16 @@ def test_run_saves_the_index_for_search(settings, offline_world, fake_llm):
     assert {c.company for c in index.chunks} >= {"Noted", "Scribely", "Recapper"}
 
 
+def test_running_out_of_budget_still_writes_a_report(settings, offline_world):
+    s = replace(settings, max_llm_calls_per_run=2)
+    tight = LLM(s, backends={"fake": FakeBackend(responder=_fake_llm_reply)})
+    result = pipeline.run("AI meeting assistants", settings=s, llm_client=tight)
+    warnings = result.report.stats["warnings"]
+    assert any(w.startswith("Pricing: none for") for w in warnings)
+    assert any(w.startswith("Complaints: skipped a batch") for w in warnings)
+    assert "recovered problems" in (result.run_dir / "report.md").read_text(encoding="utf-8")
+
+
 def test_slugify():
     assert pipeline.slugify("AI Meeting Assistants!") == "ai-meeting-assistants"
     assert pipeline.slugify("???") == "market"
