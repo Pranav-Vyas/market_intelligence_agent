@@ -35,6 +35,16 @@ class HybridIndex:
         self._dense = dense.DenseIndex(embedder, dense_path)
         self._reranker = reranker
 
+    @property
+    def bm25_index(self) -> BM25Index:
+        """The keyword retriever on its own (for evals)."""
+        return self._bm25
+
+    @property
+    def dense_index(self) -> dense.DenseIndex:
+        """The embedding retriever on its own (for evals)."""
+        return self._dense
+
     def add(self, docs: list[Document]) -> None:
         self._add_chunks(chunk_documents(docs))
 
