@@ -12,6 +12,8 @@ uv run mia run "..." --offline            # cached pages and LLM responses only
 uv run mia models                         # Gemini model IDs your key can use
 uv run mia index "AI meeting assistants"  # collect and index only → data/indexes/<market>/
 uv run mia search "too expensive" -c Otter -s app_store   # search the saved index
+uv run mia stats                          # documents per competitor/source, gaps
+uv run mia snapshot create | restore <zip>   # share the cache for --offline runs
 uv run pytest                             # tests (network tests skipped; run them with -m network)
 uv run ruff check . && uv run ruff format .
 ```

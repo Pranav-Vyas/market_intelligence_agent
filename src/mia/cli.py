@@ -228,3 +228,53 @@ def stats(
         typer.echo(f"{r.company:<22}{counts}  {'; '.join(gaps) or 'ok'}")
     competitors = sum(r.company != "(market)" for r in rows)
     typer.echo(f"\n{competitors - short}/{competitors} competitors meet the minimums.")
+
+
+snapshot_app = typer.Typer(no_args_is_help=True, help="Create or restore a frozen data snapshot.")
+app.add_typer(snapshot_app, name="snapshot")
+
+
+@snapshot_app.command("create")
+def snapshot_create(
+    name: str = typer.Option("ai-meeting-assistants", "--name", help="Start of the file name."),
+    models: bool = typer.Option(
+        False, "--models", help="Also include the local retrieval models (about 150 MB)."
+    ),
+) -> None:
+    """Zip the cache and saved indexes into data/snapshots/ for teammates' --offline runs."""
+    from mia import snapshot
+
+    try:
+        path = snapshot.create(name, include_models=models)
+    except snapshot.SnapshotError as err:
+        typer.echo(str(err), err=True)
+        raise typer.Exit(1) from err
+    size_mb = path.stat().st_size / 1e6
+    typer.echo(f"Snapshot: {path} ({size_mb:.0f} MB). Share it privately, never through git.")
+
+
+@snapshot_app.command("restore")
+def snapshot_restore(
+    path: str = typer.Argument(..., help="Snapshot zip from a teammate."),
+) -> None:
+    """Unpack a snapshot into data/, then check your settings match it."""
+    from pathlib import Path
+
+    from mia import runtime, snapshot
+
+    try:
+        manifest = snapshot.restore(Path(path))
+    except (snapshot.SnapshotError, OSError) as err:
+        typer.echo(str(err), err=True)
+        raise typer.Exit(1) from err
+    typer.echo(
+        f"Restored {manifest['files']} files from {manifest['created_at']} "
+        f"(indexes: {', '.join(manifest['indexes']) or 'none'})."
+    )
+    diffs = snapshot.mismatches(manifest, runtime.settings())
+    if diffs:
+        typer.echo("\nOffline runs only reuse the snapshot's LLM answers with these .env settings:")
+        for setting, (theirs, _) in diffs.items():
+            typer.echo(f"  {setting}={theirs}")
+    else:
+        typer.echo('Your settings match. Try: uv run mia run "AI meeting assistants" --offline')
