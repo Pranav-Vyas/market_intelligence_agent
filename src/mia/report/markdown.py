@@ -8,6 +8,7 @@ from mia.schemas import FeatureCell, MarketReport, Opportunity, PricingTier
 
 STATUS_MARK = {"yes": "✓", "partial": "~", "no": "✗", "unknown": "?"}
 BUCKETS = ["free", "pro", "business", "enterprise"]
+MAX_WARNINGS_SHOWN = 10
 
 
 class Citations:
@@ -185,6 +186,14 @@ def render(report: MarketReport) -> str:
         f"- LLM: {llm.get('requests', 0)} requests, {llm.get('cache_hits', 0)} cache hits, "
         f"{llm.get('input_tokens', 0)} input / {llm.get('output_tokens', 0)} output tokens",
         f"- Runtime: {report.stats.get('runtime_s', 0):.1f} s",
-        "",
     ]
+    if llm.get("fallbacks"):
+        out.append(f"- {llm['fallbacks']} calls fell back from the smart to the bulk model")
+    warnings = report.stats.get("warnings") or []
+    if warnings:
+        out.append(f"- {len(warnings)} recovered problems:")
+        out += [f"  - {w}" for w in warnings[:MAX_WARNINGS_SHOWN]]
+        if len(warnings) > MAX_WARNINGS_SHOWN:
+            out.append(f"  - ... and {len(warnings) - MAX_WARNINGS_SHOWN} more (see run.json)")
+    out.append("")
     return "\n".join(out)

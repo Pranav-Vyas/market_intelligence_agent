@@ -93,6 +93,7 @@ def run(
             "runtime_s": round(time.monotonic() - started, 2),
             "offline": offline,
             "stubs": stubs.used(),
+            "warnings": runtime.warnings(),
         },
     )
 

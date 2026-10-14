@@ -11,18 +11,16 @@ cell becomes "unknown". A feature the pages never mention is "unknown", not "no"
 
 from __future__ import annotations
 
-import logging
 from typing import Literal
 
 from pydantic import BaseModel
 
+from mia import runtime
 from mia.analysis.complaints import quote_in_text
-from mia.llm import LLMOutputError
+from mia.llm import RECOVERABLE
 from mia.rag.hybrid import HybridIndex
 from mia.runtime import llm
 from mia.schemas import Chunk, Competitor, FeatureCell, SourceType
-
-log = logging.getLogger(__name__)
 
 PRODUCT_SOURCES: list[SourceType] = ["official", "docs", "pricing"]
 MAX_FEATURES = 15
@@ -99,8 +97,8 @@ def propose_features(comps: list[Competitor], pages: dict[str, list[Chunk]]) -> 
     prompt = "Propose the features for the comparison table.\n\n" + "\n\n".join(excerpts)
     try:
         result = llm().extract(prompt, schema=_Taxonomy, system=TAXONOMY_SYSTEM, model="smart")
-    except LLMOutputError as err:
-        log.warning("No feature list: %s", err)
+    except RECOVERABLE as err:
+        runtime.warn(f"Features: no feature list ({err})")
         return []
 
     unique: dict[str, _Feature] = {}
@@ -129,8 +127,8 @@ def judge_company(
     )
     try:
         result = llm().extract(prompt, schema=_Judgments, system=JUDGE_SYSTEM, model="bulk")
-    except LLMOutputError as err:
-        log.warning("%s: features left unknown: %s", c.name, err)
+    except RECOVERABLE as err:
+        runtime.warn(f"Features: {c.name} left unknown ({err})")
         return unknown
 
     by_feature: dict[int, _Judgment] = {}

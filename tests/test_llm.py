@@ -3,7 +3,14 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from mia.llm import LLM, LLMBudgetExceeded, LLMCacheMiss, LLMConfigError, LLMOutputError
+from mia.llm import (
+    LLM,
+    LLMBudgetExceeded,
+    LLMCacheMiss,
+    LLMConfigError,
+    LLMOutputError,
+    LLMUnavailable,
+)
 from tests.conftest import FakeBackend, TransientError
 
 
@@ -87,6 +94,50 @@ def test_non_retryable_errors_propagate(settings):
     llm = LLM(settings, backends={"fake": backend}, sleep=lambda s: None)
     with pytest.raises(ValueError):
         llm.complete("x")
+
+
+def _overloaded_smart_model():
+    """A backend whose smart model always answers 503-like errors and whose bulk model works."""
+
+    class Backend(FakeBackend):
+        def generate(self, model, req):
+            if model == "smart-model":
+                self.calls.append({"model": model, "prompt": req.prompt})
+                raise TransientError()
+            return super().generate(model, req)
+
+    return Backend(responder=lambda req: '{"name": "pricing", "severity": 2}')
+
+
+def test_unavailable_smart_model_falls_back_to_bulk(settings):
+    backend = _overloaded_smart_model()
+    llm = LLM(settings, backends={"fake": backend}, sleep=lambda s: None)
+    assert llm.extract("x", schema=Item, model="smart") == Item(name="pricing", severity=2)
+    assert [c["model"] for c in backend.calls] == ["smart-model"] * 5 + ["bulk-model"]
+    assert llm.usage.fallbacks == 1
+    assert llm.usage.as_dict()["fallbacks"] == 1
+
+
+def test_offline_falls_back_to_the_cached_bulk_answer(settings):
+    live = LLM(settings, backends={"fake": _overloaded_smart_model()}, sleep=lambda s: 0)
+    live.extract("x", schema=Item, model="smart")
+    offline = LLM(settings, offline=True, backends={"fake": FakeBackend()})
+    assert offline.extract("x", schema=Item, model="smart").severity == 2
+
+
+def test_unavailable_bulk_model_is_not_hidden(settings):
+    backend = FakeBackend([TransientError()] * 5)
+    llm = LLM(settings, backends={"fake": backend}, sleep=lambda s: None)
+    with pytest.raises(LLMUnavailable):
+        llm.complete("x", model="bulk")
+
+
+def test_non_retryable_smart_errors_do_not_fall_back(settings):
+    backend = FakeBackend([ValueError("bad request")])
+    llm = LLM(settings, backends={"fake": backend}, sleep=lambda s: None)
+    with pytest.raises(ValueError):
+        llm.complete("x", model="smart")
+    assert llm.usage.fallbacks == 0
 
 
 def test_throttle_spaces_requests(settings):

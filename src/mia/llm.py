@@ -12,6 +12,10 @@ Never call a provider SDK directly from other modules. Use `llm()` from `mia.run
     text = llm().complete("Summarize ...", model="smart")
     result = llm().extract("Extract ...", schema=MySchema)   # validated Pydantic instance
 
+Fallback: when the smart model stays unavailable after every retry (or, offline, has no cached
+answer), the call is made with the bulk model instead and `usage.fallbacks` counts it. Free-tier
+Flash models are often overloaded; Flash-Lite rarely is.
+
 Thinking: Gemini 3 models think before answering. Each alias has a default level from .env
 (MIA_THINKING_BULK, MIA_THINKING_SMART); pass `thinking="minimal" | "low" | "medium" | "high"` to
 override it for one call. Not every model supports every level (gemini-3.8-flash rejects
@@ -22,6 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -33,6 +38,8 @@ from pydantic import BaseModel, ValidationError
 from mia.config import Settings
 
 T = TypeVar("T", bound=BaseModel)
+R = TypeVar("R")
+log = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 5
 THINKING_LEVELS = ("minimal", "low", "medium", "high")
@@ -58,6 +65,14 @@ class LLMBudgetExceeded(LLMError):
 
 class LLMOutputError(LLMError):
     """The model returned output that doesn't match the requested schema, even after a retry."""
+
+
+class LLMUnavailable(LLMError):
+    """Rate limits or server errors persisted through every retry (e.g. 503 "high demand")."""
+
+
+# What a stage can survive by skipping one item. LLMConfigError is not here: it needs a fix.
+RECOVERABLE = (LLMOutputError, LLMCacheMiss, LLMUnavailable, LLMBudgetExceeded)
 
 
 @dataclass(frozen=True)
@@ -134,6 +149,7 @@ class Usage:
     cache_hits: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    fallbacks: int = 0  # smart-model calls answered by the bulk model
     by_model: dict[str, int] = field(default_factory=dict)
 
     def as_dict(self) -> dict:
@@ -142,6 +158,7 @@ class Usage:
             "cache_hits": self.cache_hits,
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
+            "fallbacks": self.fallbacks,
             "requests_by_model": dict(self.by_model),
         }
 
@@ -177,10 +194,11 @@ class LLM:
         thinking: str | None = None,
     ) -> str:
         """Plain text completion. `model` is "bulk", "smart" or a full "provider/model-id"."""
-        full_model, default_thinking = self._resolve(model)
-        level = self._thinking(thinking, default_thinking)
-        req = LLMRequest(prompt, system, None, temperature, level)
-        return self._call(full_model, req)
+
+        def run(full_model: str, level: str | None) -> str:
+            return self._call(full_model, LLMRequest(prompt, system, None, temperature, level))
+
+        return self._with_fallback(model, thinking, run)
 
     def extract(
         self,
@@ -193,24 +211,41 @@ class LLM:
         thinking: str | None = None,
     ) -> T:
         """Structured output, validated against `schema`. Retries once with the error message."""
-        full_model, default_thinking = self._resolve(model)
-        level = self._thinking(thinking, default_thinking)
-        text = self._call(full_model, LLMRequest(prompt, system, schema, temperature, level))
-        try:
-            return schema.model_validate_json(text)
-        except ValidationError as err:
-            retry_prompt = (
-                f"{prompt}\n\nYour previous answer did not match the required JSON schema:\n"
-                f"{err}\nReturn only valid JSON matching the schema."
-            )
-            retry = LLMRequest(retry_prompt, system, schema, temperature, level)
-            text = self._call(full_model, retry)
+
+        def run(full_model: str, level: str | None) -> T:
+            text = self._call(full_model, LLMRequest(prompt, system, schema, temperature, level))
             try:
                 return schema.model_validate_json(text)
-            except ValidationError as err2:
-                raise LLMOutputError(f"{schema.__name__}: {err2}") from err2
+            except ValidationError as err:
+                retry_prompt = (
+                    f"{prompt}\n\nYour previous answer did not match the required JSON schema:\n"
+                    f"{err}\nReturn only valid JSON matching the schema."
+                )
+                retry = LLMRequest(retry_prompt, system, schema, temperature, level)
+                text = self._call(full_model, retry)
+                try:
+                    return schema.model_validate_json(text)
+                except ValidationError as err2:
+                    raise LLMOutputError(f"{schema.__name__}: {err2}") from err2
+
+        return self._with_fallback(model, thinking, run)
 
     # ---- internals --------------------------------------------------------------------------
+
+    def _with_fallback(
+        self, model: str, thinking: str | None, run: Callable[[str, str | None], R]
+    ) -> R:
+        full_model, default_thinking = self._resolve(model)
+        try:
+            return run(full_model, self._thinking(thinking, default_thinking))
+        except (LLMUnavailable, LLMCacheMiss) as err:
+            bulk = self.settings.model_bulk
+            if model != "smart" or not bulk or bulk == full_model:
+                raise
+            log.warning("%s is unavailable (%s); using the bulk model %s", full_model, err, bulk)
+            self.usage.fallbacks += 1
+            bulk_model, bulk_thinking = self._resolve("bulk")
+            return run(bulk_model, self._thinking(thinking, bulk_thinking))
 
     def _resolve(self, model: str) -> tuple[str, str | None]:
         """Return the full model string and its default thinking level."""
@@ -305,8 +340,10 @@ class LLM:
             try:
                 return backend.generate(model_id, req)
             except Exception as exc:
-                if attempt == MAX_ATTEMPTS or not backend.is_retryable(exc):
+                if not backend.is_retryable(exc):
                     raise
+                if attempt == MAX_ATTEMPTS:
+                    raise LLMUnavailable(f"{model}: {exc}") from exc
                 self._sleep(min(BACKOFF_BASE_S * 2 ** (attempt - 1), BACKOFF_MAX_S))
         raise AssertionError("unreachable")
 
