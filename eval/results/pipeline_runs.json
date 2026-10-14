@@ -1,0 +1,61 @@
+[
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-10-15",
+    "task": "A10: first full linear run on real data (clustering, coverage, scoring and verify still stubbed)",
+    "competitors": [
+      "Otter",
+      "Fathom",
+      "Fireflies",
+      "Avoma",
+      "tl;dv",
+      "Krisp",
+      "Granola",
+      "Read.ai"
+    ],
+    "documents_by_source": {
+      "official": 35,
+      "pricing": 7,
+      "hn": 172,
+      "app_store": 150
+    },
+    "complaints": 229,
+    "complaints_by_company": {
+      "Otter": 71,
+      "Fathom": 1,
+      "Fireflies": 49,
+      "Avoma": 5,
+      "tl;dv": 5,
+      "Krisp": 28,
+      "Granola": 51,
+      "Read.ai": 19
+    },
+    "complaints_by_source": {
+      "hn": 57,
+      "app_store": 172
+    },
+    "feature_cells": 104,
+    "pricing_tiers": 33,
+    "pricing_tiers_with_checked_price": 27,
+    "llm": {
+      "requests": 26,
+      "cache_hits": 10,
+      "requests_for_a_fresh_run": 36,
+      "requests_by_model": {
+        "gemini/gemini-3.8-flash": 1,
+        "gemini/gemini-3.5-flash-lite": 25
+      },
+      "input_tokens": 91333,
+      "output_tokens": 24151,
+      "fallbacks": 0,
+      "per_run_cap": 200
+    },
+    "runtime_s": 239.48,
+    "offline_rerun": {
+      "requests": 0,
+      "cache_hits": 36,
+      "runtime_s": 13
+    },
+    "notes": "The 10 cache hits are discovery and pricing calls cached by earlier runs the same week; a run from an empty cache needs about 36 requests, well under the 200 cap."
+  }
+]
