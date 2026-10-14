@@ -198,3 +198,33 @@ def search(
         where = f"{ch.company or '(market)'} · {ch.source_type} · {ch.url}"
         typer.echo(f"{i:>2}. {h.score:.3f}  {where}")
         typer.echo(f"    {body[:240]}")
+
+
+@app.command()
+def stats(
+    market: str | None = typer.Option(
+        None, "--market", "-m", help="Market whose saved index to report on (default: the latest)."
+    ),
+) -> None:
+    """Documents per competitor and source in a saved index, and what is below the minimums."""
+    from mia import pipeline, runtime
+    from mia.collectors.stats import collection_stats
+
+    try:
+        slug, idx = pipeline.load_index(market)
+    except FileNotFoundError as err:
+        typer.echo(str(err), err=True)
+        raise typer.Exit(1) from err
+
+    rows = collection_stats(idx.chunks)
+    sources = sorted({s for r in rows for s in r.docs_by_source})
+    typer.echo(f"Index: {slug}\n")
+    typer.echo(f"{'Company':<22}" + "".join(f"{s:>11}" for s in sources) + "  Gaps")
+    short = 0
+    for r in rows:
+        counts = "".join(f"{r.docs_by_source.get(s, 0):>11}" for s in sources)
+        gaps = r.gaps(runtime.settings()) if r.company != "(market)" else []
+        short += bool(gaps)
+        typer.echo(f"{r.company:<22}{counts}  {'; '.join(gaps) or 'ok'}")
+    competitors = sum(r.company != "(market)" for r in rows)
+    typer.echo(f"\n{competitors - short}/{competitors} competitors meet the minimums.")

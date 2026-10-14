@@ -98,6 +98,7 @@ def test_queries_cover_complaint_words_market_words_and_the_name(algolia):
         "Otter.ai issue",
         "Otter.ai cancel",
         "Otter.ai alternative",
+        "otter.ai",
         "otter meeting",
         "otter assistant",
         "Otter.ai",
