@@ -250,10 +250,10 @@ def _site(url: str) -> str:
 
 def render_with_browser(url: str) -> str | None:
     """Rendered HTML of a JavaScript page, or None if Playwright isn't available."""
-    if not http.client().allowed(url):
-        return None
 
-    def render() -> str | None:
+    def render() -> str | None:  # only runs online, on a cache miss
+        if not http.client().allowed(url):
+            return None
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:

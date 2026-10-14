@@ -105,3 +105,14 @@ def test_dedupe_ignores_trailing_slash_and_fragment():
 def test_access_table_is_markdown():
     table = as_markdown([AccessResult("HN", "works", "3 | 4 hits")])
     assert table.splitlines()[2] == "| HN | works | 3 / 4 hits |"
+
+
+def test_offline_uses_cached_tavily_results_without_a_key(settings, use_http, fake_ddgs):
+    tavily = {"results": [{"url": "https://t.example.com", "title": "T", "content": "from tavily"}]}
+    use_http(lambda request: httpx.Response(200, json=tavily))
+    runtime.configure(settings=replace(settings, tavily_api_key="key-of-the-snapshot-maker"))
+    search("meeting notes", k=5)
+
+    runtime.configure(settings=replace(settings, tavily_api_key=""), offline=True)
+    assert [r.url for r in search("meeting notes", k=5)] == ["https://t.example.com"]
+    assert fake_ddgs.calls == 0

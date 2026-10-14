@@ -19,13 +19,15 @@ class SearchError(Exception):
 
 def search(query: str, k: int = 10) -> list[SearchResult]:
     key = runtime.settings().tavily_api_key
-    if key:
+    # Offline, Tavily results cached by whoever made the snapshot work without a key here.
+    if key or runtime.is_offline():
         try:
             results = _tavily(query, k, key)
             if results:
                 return results
-        except (http.FetchError, SearchError, KeyError, ValueError) as err:
-            log.warning("Tavily search failed (%s); falling back to ddgs", err)
+        except (http.FetchError, cache.CacheMiss, SearchError, KeyError, ValueError) as err:
+            report = log.info if runtime.is_offline() else log.warning
+            report("Tavily search unavailable (%s); falling back to ddgs", err)
     return _ddgs(query, k)
 
 

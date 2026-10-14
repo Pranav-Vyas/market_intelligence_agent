@@ -26,6 +26,16 @@ uv run mia search "pricing too expensive" --company Otter      # -s hn / app_sto
 uv run mia index "AI meeting assistants"   # collect and index without the analysis steps
 ```
 
+### Offline, from a teammate's snapshot
+Collection and LLM calls are cached. A snapshot zips that cache so others can run everything
+without network access or quota (share it privately; scraped data never goes in git):
+```bash
+uv run mia snapshot create                       # → data/snapshots/<name>-<time>.zip
+uv run mia snapshot restore path/to/snapshot.zip # prints any .env model settings to match
+uv run mia run "AI meeting assistants" --offline
+uv run mia stats                                 # documents per competitor and source
+```
+
 ## Development
 ```bash
 uv run pytest                    # offline tests
