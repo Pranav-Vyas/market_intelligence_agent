@@ -139,18 +139,21 @@ class DenseIndex:
             )
 
     def _embed(self, texts: list[str]) -> list[list[float]]:
-        keys = [
-            {"model": self._embedder.name, "text": hashlib.sha256(t.encode()).hexdigest()}
-            for t in texts
-        ]
-        vectors = [cache.get("embeddings", key) for key in keys]
-        missing = [i for i, v in enumerate(vectors) if v is None]
-        if missing:
-            fresh = self._embedder.embed([texts[i] for i in missing])
-            for i, vector in zip(missing, fresh, strict=True):
-                vectors[i] = [round(x, 6) for x in vector]
-                cache.put("embeddings", keys[i], vectors[i])
-        return vectors
+        return embed_texts(texts, self._embedder)
+
+
+def embed_texts(texts: list[str], embedder: Embedder | None = None) -> list[list[float]]:
+    """Document embeddings, cached on disk by model and text (also used to cluster complaints)."""
+    embedder = embedder or default_embedder()
+    keys = [{"model": embedder.name, "text": hashlib.sha256(t.encode()).hexdigest()} for t in texts]
+    vectors = [cache.get("embeddings", key) for key in keys]
+    missing = [i for i, v in enumerate(vectors) if v is None]
+    if missing:
+        fresh = embedder.embed([texts[i] for i in missing])
+        for i, vector in zip(missing, fresh, strict=True):
+            vectors[i] = [round(x, 6) for x in vector]
+            cache.put("embeddings", keys[i], vectors[i])
+    return vectors
 
 
 def _metadata(chunk: Chunk) -> dict:

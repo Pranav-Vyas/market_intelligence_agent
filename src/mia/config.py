@@ -61,6 +61,7 @@ class Settings:
 
     # Evidence gates and scoring (SPEC.md §4)
     max_complaints_per_doc: int = 3
+    cluster_distance: float = 0.3  # cosine distance under which summaries merge (B9)
     gate_min_complaints: int = 5
     gate_min_docs: int = 3
     gate_min_source_types: int = 2
