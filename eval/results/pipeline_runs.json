@@ -57,5 +57,52 @@
       "runtime_s": 13
     },
     "notes": "The 10 cache hits are discovery and pricing calls cached by earlier runs the same week; a run from an empty cache needs about 36 requests, well under the 200 cap."
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-10-17",
+    "task": "Day 5: complete linear pipeline (clustering, coverage, scoring, verification) and the graph skeleton",
+    "complaints": 229,
+    "clusters": 20,
+    "ranked_opportunities": 5,
+    "weak_signals": 15,
+    "verification": {
+      "opportunities": 5,
+      "opportunities_verified": 5,
+      "verification_rate": 1.0,
+      "quotes_checked": 35,
+      "quotes_passed": 26,
+      "quote_pass_rate": 0.743
+    },
+    "llm": {
+      "requests": 22,
+      "cache_hits": 36,
+      "requests_for_a_fresh_run": 58,
+      "new_this_day": "1 cluster-naming call, 20 coverage calls (one per cluster), 1 verification call",
+      "input_tokens": 130462,
+      "output_tokens": 5376,
+      "fallbacks": 0,
+      "per_run_cap": 200
+    },
+    "runtime_s": 175.89,
+    "offline": {
+      "linear": {
+        "requests": 0,
+        "cache_hits": 58,
+        "runtime_s": 13.8
+      },
+      "graph": {
+        "requests": 0,
+        "cache_hits": 58,
+        "runtime_s": 15.1,
+        "report_identical_to_linear": true
+      },
+      "graph_resumed_after_ctrl_c": {
+        "requests": 0,
+        "cache_hits": 48,
+        "runtime_s": 5.3,
+        "report_identical_to_linear": true
+      }
+    }
   }
 ]
