@@ -108,3 +108,59 @@ def test_render_without_opportunities_says_so():
 def test_render_warns_about_stubs():
     md = render(_report(stats={"stubs": ["discovery.discover_competitors"]}))
     assert "fake data" in md
+
+
+def test_summary_names_top_complaints_and_gaps():
+    md = render(_report())
+    assert "## Summary" in md
+    assert "**Most common complaints:** too expensive (100%)." in md
+    assert "**Top market gaps:** Too expensive (8.4/10, unmet need)." in md
+
+
+def test_gap_reads_like_the_topic_example():
+    md = render(_report())
+    assert "- **Frequency:** 100% of complaints (1 complaint, 1 document, Reddit)" in md
+    assert "- **Coverage:** 0/1 competitors claim to address it. r" in md
+    assert "- **Evidence** ✓ verified:" in md
+    assert '"Way too pricey." (Otter, Reddit)' in md
+
+
+def test_weak_signals_say_which_gate_failed():
+    weak = _report().opportunities[0].model_copy(update={"verified": False})
+    md = render(_report(opportunities=[], weak_signals=[weak]))
+    assert "1 complaint (needs 5); 1 document (needs 3); only Reddit (needs 2 source types)" in md
+
+
+def test_prices_show_the_annual_price_in_brackets():
+    tier = PricingTier(
+        company="Otter",
+        tier="Pro",
+        bucket="pro",
+        monthly_usd=16.99,
+        annual_monthly_usd=8.33,
+        per_seat=True,
+        source_url="https://otter.ai/pricing",
+    )
+    annual_only = tier.model_copy(update={"monthly_usd": None})
+    md = render(_report(pricing=[tier]))
+    assert "$16.99/seat/mo ($8.33)" in md
+    assert "$8.33/seat/mo (annual)" in render(_report(pricing=[annual_only]))
+
+
+def test_complaints_table_shows_an_example_quote():
+    assert '| "Way too pricey." [3] |' in render(_report())
+
+
+def test_method_reports_verification():
+    stats = {
+        "verification": {
+            "opportunities": 2,
+            "opportunities_verified": 1,
+            "quotes_checked": 10,
+            "quotes_passed": 8,
+            "quote_pass_rate": 0.8,
+        }
+    }
+    assert "- Verification: 1/2 ranked gaps verified; 8/10 quotes passed (80%)" in render(
+        _report(stats=stats)
+    )
