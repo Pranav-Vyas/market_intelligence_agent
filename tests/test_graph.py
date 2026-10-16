@@ -99,6 +99,34 @@ def test_a_stopped_run_resumes_without_redoing_finished_steps(s, offline_world, 
     assert result.report.stats["run_id"] == run_id
 
 
+def test_ctrl_c_in_one_scout_branch_reruns_only_that_branch(s, offline_world, monkeypatch):
+    calls = {"official": 0, "complaints": 0}
+    official, complaints = pipeline.collect_official, pipeline.collect_complaints
+    crashed = []
+
+    def count_official(c):
+        calls["official"] += 1
+        return official(c)
+
+    def interrupt_recapper_once(c, market, source, **kwargs):
+        calls["complaints"] += 1
+        if c.name == "Recapper" and not crashed:
+            crashed.append(True)
+            raise KeyboardInterrupt
+        return complaints(c, market, source, **kwargs)
+
+    monkeypatch.setattr(pipeline, "collect_official", count_official)
+    monkeypatch.setattr(pipeline, "collect_complaints", interrupt_recapper_once)
+    with pytest.raises(graph.RunStopped) as stopped:
+        graph.run(MARKET, settings=s, llm_client=_llm(s))
+    before = dict(calls)
+
+    result = graph.run(resume=stopped.value.run_id, settings=s, llm_client=_llm(s))
+    assert calls["official"] == before["official"]  # finished branches are not repeated
+    assert calls["complaints"] == before["complaints"] + 2  # Recapper's two sources, again
+    assert result.report.opportunities
+
+
 def test_resuming_a_finished_run_returns_its_report(s, offline_world):
     first = graph.run(MARKET, settings=s, llm_client=_llm(s))
     again = graph.run(resume=first.report.stats["run_id"], settings=s, llm_client=_llm(s))

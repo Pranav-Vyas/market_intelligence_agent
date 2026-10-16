@@ -80,7 +80,9 @@ def run(
         try:
             if not resume:
                 graph.invoke(initial_state(run_id, market or "", offline), config)
-            elif saved.next:
+            elif "run_dir" not in saved.values:  # the report node is the last step
+                # Continue from the last checkpoint. Branches that finished before the stop
+                # saved their results as pending writes; only the unfinished ones run again.
                 graph.invoke(None, config)
         except (Exception, KeyboardInterrupt) as err:
             raise RunStopped(run_id, err) from err
