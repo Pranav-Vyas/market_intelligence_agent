@@ -21,7 +21,7 @@ from mia.analysis.coverage import assess_coverage
 from mia.analysis.features import build_feature_matrix
 from mia.analysis.pricing import extract_pricing
 from mia.analysis.scoring import score_opportunities
-from mia.analysis.verify import verify
+from mia.analysis.verify import verification_stats, verify
 from mia.collectors.complaints import COMPLAINT_SOURCES, collect_complaints
 from mia.collectors.dedupe import dedupe
 from mia.collectors.web import collect_official
@@ -74,8 +74,9 @@ def run(
     clusters = cluster_complaints(complaints)
     coverage = {cl.id: assess_coverage(cl, competitors, index) for cl in clusters}
     ranked, weak = score_opportunities(clusters, coverage, len(competitors))
-    ranked = verify(ranked, complaints, index)
-    verification_rate = sum(o.verified for o in ranked) / len(ranked) if ranked else None
+    checked = verify(ranked, complaints, index)
+    verification = verification_stats(ranked, checked)
+    ranked = checked
 
     report = MarketReport(
         market=market,
@@ -89,7 +90,8 @@ def run(
         stats={
             "documents_by_source": dict(Counter(d.source_type for d in docs)),
             "llm": runtime.llm().usage.as_dict(),
-            "verification_rate": verification_rate,
+            "verification_rate": verification["verification_rate"],
+            "verification": verification,
             "runtime_s": round(time.monotonic() - started, 2),
             "offline": offline,
             "stubs": stubs.used(),
