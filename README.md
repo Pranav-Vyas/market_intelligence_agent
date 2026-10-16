@@ -5,8 +5,8 @@ official pages and real customer complaints, and produces a report with citation
 comparison, a pricing comparison, complaint clusters, and ranked market gaps backed by verified
 quotes.
 
-> Work in progress. The full plan is in [SPEC.md](SPEC.md). Steps that still return fake data are
-> listed when you run the pipeline.
+> Work in progress. The full plan is in [SPEC.md](SPEC.md). Every pipeline step runs on real data
+> now; the multi-agent graph (`mia run --graph`) is being built.
 
 ## Quick start
 ```bash

@@ -41,7 +41,7 @@ def score_opportunities(
             coverage=round(cov, 3),
             score=round(10 * sum(s.score_weights[k] * v for k, v in parts.items()), 2),
             score_breakdown={k: round(v, 3) for k, v in parts.items()},
-            rationale=_rationale(cl, cells, n_competitors),
+            rationale=_rationale(cells),
             evidence=pick_evidence(cl.complaint_ids),
         )
         (ranked if passes_gates(cl) else weak).append(opp)
@@ -79,15 +79,10 @@ def pick_evidence(complaint_ids: list[str], k: int = EVIDENCE_CANDIDATES) -> lis
     return (first + rest)[:k]
 
 
-def _rationale(cl: ComplaintCluster, cells: dict[str, FeatureCell], n_competitors: int) -> str:
+def _rationale(cells: dict[str, FeatureCell]) -> str:
+    """Which competitors' own sites claim to address the pain point."""
     claims = [name for name, c in cells.items() if c.status == "yes"]
-    partly = [name for name, c in cells.items() if c.status == "partial"]
-    who = [f"yes: {', '.join(claims)}"] if claims else []
-    who += [f"partly: {', '.join(partly)}"] if partly else []
-    covered = len(claims) + 0.5 * len(partly)
-    return (
-        f"{len(cl.complaint_ids)} complaints ({cl.share:.0%} of all) from {cl.distinct_docs} "
-        f"documents on {', '.join(cl.source_types)}, mean severity {cl.mean_severity:.1f}/3; "
-        f"{covered:g}/{n_competitors} competitors claim to address it"
-        + (f" ({'; '.join(who)})." if who else ".")
-    )
+    claims += [f"{name} (partly)" for name, c in cells.items() if c.status == "partial"]
+    if not claims:
+        return "No competitor's own site claims to address it."
+    return f"Claimed on the sites of {', '.join(claims)}."

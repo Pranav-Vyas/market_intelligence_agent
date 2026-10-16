@@ -47,7 +47,7 @@ def test_score_follows_the_formula():
     assert opp.score == pytest.approx(expected, abs=0.01)
     assert opp.coverage == 0.375
     assert opp.kind == "unmet_need"  # coverage < 0.4
-    assert "1.5/4 competitors claim to address it (yes: A; partly: B)" in opp.rationale
+    assert opp.rationale == "Claimed on the sites of A, B (partly)."
 
 
 def test_vendors_claiming_it_makes_it_poor_execution():
@@ -62,6 +62,7 @@ def test_clusters_failing_a_gate_become_weak_signals():
     assert [o.cluster_id for o in ranked] == ["big", "small"]  # best first
     assert {o.cluster_id for o in weak} == {"one-source", "few-docs"}
     assert all(o.coverage == 0 and o.kind == "unmet_need" for o in ranked + weak)
+    assert ranked[0].rationale == "No competitor's own site claims to address it."
 
 
 def test_frequency_is_relative_to_the_most_common_pain_point():
