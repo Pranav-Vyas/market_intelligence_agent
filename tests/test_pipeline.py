@@ -38,6 +38,14 @@ def _fake_llm_reply(req) -> str:
         return json.dumps({"judgments": []})
     if req.schema is not None and req.schema.__name__ == "_Pricing":
         return json.dumps({"tiers": [{"name": "Pro", "bucket": "pro", "monthly_usd": 9}]})
+    if req.schema is not None and req.schema.__name__ == "_Names":
+        clusters = re.findall(r'<cluster id="(\d+)">\n- ([^\n]+)', req.prompt)
+        return json.dumps({"names": [{"cluster_id": int(i), "label": s} for i, s in clusters]})
+    if req.schema is not None and req.schema.__name__ == "_Coverage":
+        return json.dumps({"judgments": []})
+    if req.schema is not None and req.schema.__name__ == "_Verdicts":
+        items = re.findall(r'<item id="(\d+)">', req.prompt)
+        return json.dumps({"verdicts": [{"item_id": int(i), "supports": True} for i in items]})
     return "{}"
 
 
@@ -91,10 +99,15 @@ def test_report_is_internally_consistent(settings, offline_world, fake_llm):
     assert scores == sorted(scores, reverse=True)
 
 
-def test_stats_list_stubbed_steps(settings, offline_world, fake_llm):
+def test_no_step_is_stubbed_and_opportunities_are_ranked_and_verified(
+    settings, offline_world, fake_llm
+):
     report = pipeline.run("AI meeting assistants", settings=settings, llm_client=fake_llm).report
-    assert "llm" in report.stats
-    assert isinstance(report.stats["stubs"], list)
+    assert report.stats["stubs"] == []
+    assert report.stats["warnings"] == []
+    assert report.opportunities and report.opportunities[0].verified
+    assert report.stats["verification"]["quote_pass_rate"] == 1.0
+    assert report.stats["verification_rate"] == 1.0
 
 
 def test_run_saves_the_index_for_search(settings, offline_world, fake_llm):
