@@ -55,7 +55,8 @@ class Settings:
     # Agent and collection limits (SPEC.md §3, §5)
     min_competitors: int = 5
     max_competitors: int = 8
-    max_agent_steps: int = 20
+    max_graph_steps: int = 40  # LangGraph recursion_limit: the last guard against loops
+    max_concurrency: int = 4  # graph branches (scouts) running at once
     min_complaint_docs_per_company: int = 15
     max_complaint_docs_per_source: int = 40
 

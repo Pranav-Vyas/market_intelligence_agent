@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from mia import runtime
+from mia.jsonfile import write_json
 from mia.schemas import utcnow
 
 
@@ -33,10 +34,8 @@ def get(namespace: str, key: Any) -> Any | None:
 
 
 def put(namespace: str, key: Any, value: Any) -> None:
-    path = _path(namespace, key)
-    path.parent.mkdir(parents=True, exist_ok=True)
     record = {"key": key, "stored_at": utcnow().isoformat(), "value": value}
-    path.write_text(json.dumps(record), encoding="utf-8")
+    write_json(_path(namespace, key), record)
 
 
 def get_or_fetch(namespace: str, key: Any, fetch: Callable[[], Any]) -> Any:

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 import urllib.robotparser
 from collections.abc import Callable
@@ -86,6 +87,7 @@ class HttpClient:
         self._max_attempts = max_attempts
         self._last_request: dict[str, float] = {}
         self._robots: dict[str, urllib.robotparser.RobotFileParser] = {}
+        self._lock = threading.Lock()  # per-host turns and robots.txt are shared by branches
 
     # ---- public API -------------------------------------------------------------------------
 
@@ -123,7 +125,9 @@ class HttpClient:
     def allowed(self, url: str) -> bool:
         parts = urlsplit(url)
         origin = f"{parts.scheme}://{parts.netloc}"
-        if origin not in self._robots:
+        with self._lock:
+            parser = self._robots.get(origin)
+        if parser is None:
             parser = urllib.robotparser.RobotFileParser()
             try:
                 resp = self._request("GET", f"{origin}/robots.txt")
@@ -136,8 +140,9 @@ class HttpClient:
                     parser.allow_all = True
                 else:
                     parser.parse(resp.text.splitlines())
-            self._robots[origin] = parser
-        return self._robots[origin].can_fetch(self._user_agent, url)
+            with self._lock:
+                parser = self._robots.setdefault(origin, parser)
+        return parser.can_fetch(self._user_agent, url)
 
     # ---- internals --------------------------------------------------------------------------
 
@@ -183,14 +188,16 @@ class HttpClient:
         raise FetchError(f"{method} {url} failed after {self._max_attempts} attempts: {last_error}")
 
     def wait_turn(self, url: str) -> None:
-        """Block until this host may be contacted again (also used by the browser fallback)."""
+        """Block until this host may be contacted again (also used by the browser fallback).
+        Turns are handed out under a lock, so parallel graph branches queue per host."""
         host = urlsplit(url).netloc
-        last = self._last_request.get(host)
-        if last is not None:
-            wait = self._min_interval_s - (self._clock() - last)
-            if wait > 0:
-                self._sleep(wait)
-        self._last_request[host] = self._clock()
+        with self._lock:
+            now = self._clock()
+            last = self._last_request.get(host)
+            start = now if last is None else max(now, last + self._min_interval_s)
+            self._last_request[host] = start
+        if start > now:
+            self._sleep(start - now)
 
     @staticmethod
     def _backoff(attempt: int) -> float:
