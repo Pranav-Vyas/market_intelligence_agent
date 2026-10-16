@@ -24,18 +24,44 @@ def main(verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug
 
 @app.command()
 def run(
-    market: str = typer.Argument(..., help='Market to analyze, e.g. "AI meeting assistants".'),
+    market: str | None = typer.Argument(
+        None, help='Market to analyze, e.g. "AI meeting assistants".'
+    ),
     offline: bool = typer.Option(
         False, "--offline", help="Use only cached pages and LLM responses (no network)."
     ),
+    graph: bool = typer.Option(
+        False, "--graph", help="Run the multi-agent graph (checkpointed, resumable)."
+    ),
+    resume: str | None = typer.Option(
+        None, "--resume", help="Continue a stopped graph run, given its run id."
+    ),
 ) -> None:
     """Run the full pipeline and write report.md + run.json."""
-    from mia import pipeline
+    if not (market or resume):
+        typer.echo("Give a market, or --resume <run-id>.", err=True)
+        raise typer.Exit(2)
+    if graph or resume:
+        from mia.agent import graph as research_graph
 
-    result = pipeline.run(market, offline=offline)
+        try:
+            result = research_graph.run(market, offline=offline, resume=resume)
+        except research_graph.RunStopped as err:
+            typer.echo(f"{err}\nResume with: uv run mia run --resume {err.run_id}", err=True)
+            raise typer.Exit(1) from err
+        except ValueError as err:
+            typer.echo(str(err), err=True)
+            raise typer.Exit(1) from err
+        typer.echo(f"Run id: {result.report.stats['run_id']}")
+    else:
+        from mia import pipeline
+
+        result = pipeline.run(market or "", offline=offline)
     stats = result.report.stats
     typer.echo(f"Report: {result.run_dir / 'report.md'}")
     typer.echo(f"LLM: {stats['llm']['requests']} requests, {stats['llm']['cache_hits']} cache hits")
+    if stats.get("verification_rate") is not None:
+        typer.echo(f"Verified: {stats['verification_rate']:.0%} of ranked opportunities")
     if stats["stubs"]:
         typer.echo(f"Still stubbed ({len(stats['stubs'])}): {', '.join(stats['stubs'])}")
 

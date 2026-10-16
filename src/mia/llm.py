@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -36,6 +37,7 @@ from typing import Protocol, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from mia.config import Settings
+from mia.jsonfile import write_json
 
 T = TypeVar("T", bound=BaseModel)
 R = TypeVar("R")
@@ -181,6 +183,8 @@ class LLM:
         self._clock = clock
         self._last_call: dict[str, float] = {}
         self._cache_dir = settings.cache_dir / "llm"
+        self._lock = threading.Lock()  # usage, budget and throttle are shared by graph branches
+        self._per_thread: dict[int, list[int]] = {}
 
     # ---- public API -------------------------------------------------------------------------
 
@@ -300,37 +304,47 @@ class LLM:
     def _call(self, model: str, req: LLMRequest) -> str:
         path = self._cache_path(model, req)
         if path.exists():
-            self.usage.cache_hits += 1
+            with self._lock:
+                self.usage.cache_hits += 1
             return json.loads(path.read_text(encoding="utf-8"))["text"]
         if self.offline:
             raise LLMCacheMiss(f"No cached response for this {model} call (offline mode).")
-        if self.usage.requests >= self.settings.max_llm_calls_per_run:
-            raise LLMBudgetExceeded(
-                f"Reached MIA_MAX_LLM_CALLS_PER_RUN={self.settings.max_llm_calls_per_run}."
-            )
+        with self._lock:  # reserve the request first, so parallel branches can't overshoot
+            if self.usage.requests >= self.settings.max_llm_calls_per_run:
+                raise LLMBudgetExceeded(
+                    f"Reached MIA_MAX_LLM_CALLS_PER_RUN={self.settings.max_llm_calls_per_run}."
+                )
+            self.usage.requests += 1
 
         provider, model_id = model.split("/", 1)
-        backend = self._backend(provider)
-        raw = self._generate_with_retries(backend, model, model_id, req)
+        try:
+            raw = self._generate_with_retries(self._backend(provider), model, model_id, req)
+        except BaseException:
+            with self._lock:
+                self.usage.requests -= 1
+            raise
 
-        self.usage.requests += 1
-        self.usage.input_tokens += raw.input_tokens
-        self.usage.output_tokens += raw.output_tokens
-        self.usage.by_model[model] = self.usage.by_model.get(model, 0) + 1
-
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(
-                {
-                    "model": model,
-                    "text": raw.text,
-                    "input_tokens": raw.input_tokens,
-                    "output_tokens": raw.output_tokens,
-                }
-            ),
-            encoding="utf-8",
-        )
+        with self._lock:
+            self.usage.input_tokens += raw.input_tokens
+            self.usage.output_tokens += raw.output_tokens
+            self.usage.by_model[model] = self.usage.by_model.get(model, 0) + 1
+            mine = self._per_thread.setdefault(threading.get_ident(), [0, 0])
+            mine[0] += 1
+            mine[1] += raw.input_tokens + raw.output_tokens
+        record = {
+            "model": model,
+            "text": raw.text,
+            "input_tokens": raw.input_tokens,
+            "output_tokens": raw.output_tokens,
+        }
+        write_json(path, record)
         return raw.text
+
+    def thread_usage(self) -> tuple[int, int]:
+        """(requests, tokens) made so far by the calling thread: one graph branch's share."""
+        with self._lock:
+            requests, tokens = self._per_thread.get(threading.get_ident(), [0, 0])
+        return requests, tokens
 
     def _generate_with_retries(
         self, backend: Backend, model: str, model_id: str, req: LLMRequest
@@ -348,10 +362,13 @@ class LLM:
         raise AssertionError("unreachable")
 
     def _throttle(self, model: str) -> None:
+        """Wait for this model's next free slot. Slots are handed out under the lock, so
+        parallel callers queue up instead of all waiting for the same moment."""
         min_interval = 60.0 / max(self.settings.llm_rpm, 1)
-        last = self._last_call.get(model)
-        if last is not None:
-            wait = min_interval - (self._clock() - last)
-            if wait > 0:
-                self._sleep(wait)
-        self._last_call[model] = self._clock()
+        with self._lock:
+            now = self._clock()
+            last = self._last_call.get(model)
+            start = now if last is None else max(now, last + min_interval)
+            self._last_call[model] = start
+        if start > now:
+            self._sleep(start - now)
