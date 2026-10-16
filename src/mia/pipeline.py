@@ -31,7 +31,17 @@ from mia.llm import LLM
 from mia.rag.chunking import chunk_documents
 from mia.rag.hybrid import HybridIndex
 from mia.report.markdown import render
-from mia.schemas import COMPLAINT_SOURCE_TYPES, Competitor, Document, MarketReport
+from mia.schemas import (
+    COMPLAINT_SOURCE_TYPES,
+    Competitor,
+    Complaint,
+    ComplaintCluster,
+    Document,
+    FeatureCell,
+    MarketReport,
+    Opportunity,
+    PricingTier,
+)
 
 
 @dataclass
@@ -58,54 +68,101 @@ def run(
 
     competitors = discover_competitors(market, k=s.max_competitors)
     docs = collect(market, competitors)
+    pricing = [tier for c in competitors for tier in pricing_for(c, docs)]
     index = build_index(market, docs)
+    analysis = analyze(competitors, docs, index)
+    ranked, verification = check(analysis.ranked, analysis.complaints, index)
 
+    report = make_report(
+        market,
+        competitors=competitors,
+        docs=docs,
+        pricing=pricing,
+        analysis=analysis,
+        ranked=ranked,
+        verification=verification,
+        stats={"runtime_s": round(time.monotonic() - started, 2), "offline": offline},
+    )
+    run_dir = s.runs_dir / slugify(market) / datetime.now().strftime("%Y%m%d-%H%M%S")
+    return RunResult(report=report, run_dir=write_report(report, run_dir))
+
+
+# ---- stages, shared with the agent graph (agent/graph.py) ---------------------------------------
+
+
+@dataclass
+class Analysis:
+    features: list[FeatureCell]
+    complaints: list[Complaint]
+    clusters: list[ComplaintCluster]
+    ranked: list[Opportunity]
+    weak: list[Opportunity]
+
+
+def pricing_for(c: Competitor, docs: list[Document]) -> list[PricingTier]:
+    pages = [d for d in docs if d.company == c.name and d.source_type == "pricing"]
+    return extract_pricing(c, pages)
+
+
+def analyze(competitors: list[Competitor], docs: list[Document], index: HybridIndex) -> Analysis:
+    """Features, complaints, clusters, coverage and scores: everything between the collected
+    documents and verification."""
     features = build_feature_matrix(competitors, index)
-    pricing = [
-        tier
-        for c in competitors
-        for tier in extract_pricing(
-            c, [d for d in docs if d.company == c.name and d.source_type == "pricing"]
-        )
-    ]
-
     complaint_chunks = chunk_documents([d for d in docs if d.source_type in COMPLAINT_SOURCE_TYPES])
     complaints = extract_complaints(complaint_chunks)
     clusters = cluster_complaints(complaints)
     coverage = {cl.id: assess_coverage(cl, competitors, index) for cl in clusters}
     ranked, weak = score_opportunities(clusters, coverage, len(competitors))
-    checked = verify(ranked, complaints, index)
-    verification = verification_stats(ranked, checked)
-    ranked = checked
+    return Analysis(features, complaints, clusters, ranked, weak)
 
-    report = MarketReport(
+
+def check(
+    ranked: list[Opportunity], complaints: list[Complaint], index: HybridIndex
+) -> tuple[list[Opportunity], dict]:
+    """Verified opportunities and the verification statistics."""
+    checked = verify(ranked, complaints, index)
+    return checked, verification_stats(ranked, checked)
+
+
+def make_report(
+    market: str,
+    *,
+    competitors: list[Competitor],
+    docs: list[Document],
+    pricing: list[PricingTier],
+    analysis: Analysis,
+    ranked: list[Opportunity],
+    verification: dict,
+    stats: dict,
+) -> MarketReport:
+    return MarketReport(
         market=market,
         competitors=competitors,
-        features=features,
+        features=analysis.features,
         pricing=pricing,
-        complaints=complaints,
-        clusters=clusters,
+        complaints=analysis.complaints,
+        clusters=analysis.clusters,
         opportunities=ranked,
-        weak_signals=weak,
+        weak_signals=analysis.weak,
         stats={
             "documents_by_source": dict(Counter(d.source_type for d in docs)),
             "llm": runtime.llm().usage.as_dict(),
             "verification_rate": verification["verification_rate"],
             "verification": verification,
-            "runtime_s": round(time.monotonic() - started, 2),
-            "offline": offline,
             "stubs": stubs.used(),
             "warnings": runtime.warnings(),
+            **stats,
         },
     )
 
-    run_dir = s.runs_dir / slugify(market) / datetime.now().strftime("%Y%m%d-%H%M%S")
+
+def write_report(report: MarketReport, run_dir: Path) -> Path:
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "report.md").write_text(render(report), encoding="utf-8")
     (run_dir / "run.json").write_text(
         json.dumps(report.model_dump(mode="json"), indent=2), encoding="utf-8"
     )
-    return RunResult(report=report, run_dir=run_dir)
+    return run_dir
 
 
 def collect(market: str, competitors: list[Competitor]) -> list[Document]:

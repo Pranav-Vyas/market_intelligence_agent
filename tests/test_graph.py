@@ -1,0 +1,112 @@
+"""The research graph (task A12) against the linear pipeline, on the fixture world."""
+
+from __future__ import annotations
+
+import json
+from dataclasses import replace
+
+import pytest
+
+from mia import pipeline
+from mia.agent import graph
+from mia.llm import LLM
+from tests.conftest import FakeBackend
+from tests.test_pipeline import _fake_llm_reply
+
+MARKET = "AI meeting assistants"
+
+
+@pytest.fixture
+def s(settings):
+    return replace(settings, max_llm_calls_per_run=50)
+
+
+def _llm(s, offline: bool = False) -> LLM:
+    return LLM(s, offline=offline, backends={"fake": FakeBackend(responder=_fake_llm_reply)})
+
+
+def _content(report) -> dict:
+    data = report.model_dump(mode="json")
+    data.pop("generated_at")
+    data.pop("stats")
+    return data
+
+
+def test_graph_report_matches_the_linear_pipeline(s, offline_world):
+    linear = pipeline.run(MARKET, settings=s, llm_client=_llm(s)).report
+    result = graph.run(MARKET, settings=s, llm_client=_llm(s))
+    assert _content(result.report) == _content(linear)
+    assert result.report.stats["engine"] == "graph"
+    assert (result.run_dir / "report.md").exists()
+
+
+def test_offline_graph_run_replays_the_linear_runs_llm_cache(s, offline_world):
+    pipeline.run(MARKET, settings=s, llm_client=_llm(s))
+    offline = _llm(s, offline=True)
+    result = graph.run(MARKET, offline=True, settings=s, llm_client=offline)
+    assert offline.usage.requests == 0
+    assert offline.usage.cache_hits > 0
+    assert result.report.opportunities  # ranked and verified, not just a skeleton
+    assert result.report.stats["warnings"] == []
+
+
+def test_trace_has_one_entry_per_scout_and_stage(s, offline_world):
+    result = graph.run(MARKET, settings=s, llm_client=_llm(s))
+    rows = [json.loads(line) for line in (result.run_dir / "trace.jsonl").read_text().splitlines()]
+    agents = [r["agent"] for r in rows]
+    assert agents.count("product_scout") == 3 and agents.count("customer_scout") == 3
+    assert {"discovery", "analyst", "verifier", "report"} <= set(agents)
+    scouts = [r for r in rows if r["agent"].endswith("_scout")]
+    assert len({r["step"] for r in scouts}) == 1  # all six branches ran in the same step
+    assert {r["competitor"] for r in scouts} == {"Noted", "Scribely", "Recapper"}
+    assert sum(r["requests"] for r in rows) == result.report.stats["llm"]["requests"]
+    assert "product_scout" in (result.run_dir / "graph.mmd").read_text()
+
+
+def test_a_stopped_run_resumes_without_redoing_finished_steps(s, offline_world, monkeypatch):
+    calls = {"discover": 0, "official": 0, "analyze": 0}
+    discover, official, analyze = (
+        pipeline.discover_competitors,
+        pipeline.collect_official,
+        pipeline.analyze,
+    )
+
+    def counting(name, fn):
+        def wrapped(*args, **kwargs):
+            calls[name] += 1
+            return fn(*args, **kwargs)
+
+        return wrapped
+
+    def crash_once(*args, **kwargs):
+        calls["analyze"] += 1
+        if calls["analyze"] == 1:
+            raise RuntimeError("daily quota reached")
+        return analyze(*args, **kwargs)
+
+    monkeypatch.setattr(pipeline, "discover_competitors", counting("discover", discover))
+    monkeypatch.setattr(pipeline, "collect_official", counting("official", official))
+    monkeypatch.setattr(pipeline, "analyze", crash_once)
+
+    with pytest.raises(graph.RunStopped) as stopped:
+        graph.run(MARKET, settings=s, llm_client=_llm(s))
+    run_id = stopped.value.run_id
+    assert calls == {"discover": 1, "official": 3, "analyze": 1}
+
+    result = graph.run(resume=run_id, settings=s, llm_client=_llm(s))
+    assert calls == {"discover": 1, "official": 3, "analyze": 2}  # only the failed step reran
+    assert result.report.opportunities
+    assert result.report.stats["run_id"] == run_id
+
+
+def test_resuming_a_finished_run_returns_its_report(s, offline_world):
+    first = graph.run(MARKET, settings=s, llm_client=_llm(s))
+    again = graph.run(resume=first.report.stats["run_id"], settings=s, llm_client=_llm(s))
+    assert again.run_dir == first.run_dir
+
+
+def test_unknown_run_id_and_missing_market_are_errors(s):
+    with pytest.raises(ValueError, match="No saved run"):
+        graph.run(resume="no-such-run", settings=s, llm_client=_llm(s))
+    with pytest.raises(ValueError, match="Give a market"):
+        graph.run(settings=s, llm_client=_llm(s))
