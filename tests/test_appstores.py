@@ -176,6 +176,13 @@ def test_dedupe_drops_repeated_ids_and_texts_and_keeps_the_first():
     ]
 
 
+def test_query_words_match_by_stem(stores):
+    assert appstores.stem("cancelling") == appstores.stem("cancelled") == appstores.stem("cancel")
+    assert appstores.stem("charged") == appstores.stem("charge")
+    docs = collect_complaints(ACME, MARKET, "app_store", query="crashing meetings")
+    assert [d.title for d in docs] == ["Keeps crashing"]  # "crashes" and "meeting" match by stem
+
+
 def test_dedupe_is_per_company():
     acme = _doc("https://a.example/1", "Otter and Acme both crash.")
     other = acme.model_copy(update={"company": "Otter"})

@@ -221,6 +221,7 @@ def customer_scout(task: ScoutTask, config) -> dict:
         task["market"],
         focus=task.get("focus"),
         known=frozenset(task.get("known") or ()),
+        tried_before=tuple(task.get("tried") or ()),
     )
     return {"documents": docs, "trace": [_row(task, config, row) for row in rows]}
 
@@ -273,6 +274,16 @@ def after_verifier(state: ResearchState) -> list[Send] | str:
                 continue
             position, c = by_name[name]
             known = [d.id for d in state.get("documents", []) if d.company == name]
+            # every earlier targeted search for this competitor: pain points get renamed when
+            # they are re-clustered, so matching on the label alone would miss them
+            tried = [
+                f'{r["source"]} "{r["query"]}": {r["new"]} new, for "{r["focus"]}"'
+                for r in state.get("trace", [])
+                if r.get("agent") == "customer_scout"
+                and r.get("competitor") == name
+                and r.get("focus")
+                and r.get("query")
+            ]
             task = ScoutTask(
                 run_id=state["run_id"],
                 market=state["market"],
@@ -280,6 +291,7 @@ def after_verifier(state: ResearchState) -> list[Send] | str:
                 position=position,
                 focus=target["label"],
                 known=known,
+                tried=tried,
             )
             sends.append(Send("customer_scout", task))
     return sends or "report"

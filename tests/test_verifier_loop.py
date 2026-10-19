@@ -26,7 +26,7 @@ PRICE = "The plan is too expensive for a small team. We had to drop it."
 RECORDING = "It keeps dropping the recording halfway. Lost two calls."
 
 
-def fake_scout(c, market, *, focus=None, known=frozenset()):
+def fake_scout(c, market, *, focus=None, known=frozenset(), tried_before=()):
     """Round one: price complaints only in the App Store, recording complaints only on HN, so
     both are weak signals. Research on the price finds HN comments; on recording, nothing."""
     if focus is None:
@@ -36,6 +36,7 @@ def fake_scout(c, market, *, focus=None, known=frozenset()):
         docs = [_doc(c.name, "hn", 10, f"Honestly way too expensive. {PRICE}")]
     else:
         docs = []
+    SEEN_TRIED.append((c.name, focus, tuple(tried_before)))
     row = {
         "agent": "customer_scout",
         "competitor": c.name,
@@ -43,12 +44,20 @@ def fake_scout(c, market, *, focus=None, known=frozenset()):
         "result_summary": f"{len(docs)} documents (focus: {focus})",
         "requests": 0,
         "tokens": 0,
+        "source": "hn" if focus else None,
+        "query": f"{c.name} query" if focus else None,
+        "new": len(docs),
+        "focus": focus,
     }
     return docs, [row]
 
 
+SEEN_TRIED: list[tuple] = []
+
+
 @pytest.fixture
 def world(settings, offline_world, monkeypatch):
+    SEEN_TRIED.clear()
     monkeypatch.setattr(customer_scout, "scout", fake_scout)
     return replace(settings, max_llm_calls_per_run=80)
 
@@ -77,6 +86,15 @@ def test_research_turns_a_weak_signal_into_a_ranked_opportunity(world):
     )
     assert report.stats["agent"]["verify_rounds"] == 3  # 2 research rounds, then the last check
     assert [r["agent"] for r in rows].count("analyst") == 3
+
+
+def test_the_second_research_round_gets_the_first_rounds_searches(world):
+    graph.run(MARKET, settings=world, llm_client=_llm(world))
+    focused = [(name, tried) for name, focus, tried in SEEN_TRIED if focus]
+    first = {name: tried for name, tried in focused[: len(focused) // 2]}
+    assert all(tried == () for tried in first.values())
+    later = [tried for _, tried in focused[len(first) :] if tried]
+    assert later and all('hn "' in t and 'query": ' in t and ", for " in t for t in later[0])
 
 
 def test_research_stops_when_collection_has_no_budget_left(world):

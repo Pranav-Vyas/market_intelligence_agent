@@ -184,9 +184,23 @@ def _parse_time(value: str) -> datetime | None:
 
 def _matching(docs: list[Document], query: str) -> list[Document]:
     """Reviews that share at least two of the query's words (one for a one-word query), best
-    overlap first. One shared word is too loose: almost every review says "recording"."""
-    terms = set(tokenize(query))
+    overlap first. One shared word is too loose: almost every review says "recording". Words
+    are compared by stem, so "cancelling" matches "cancel" and "charged" matches "charge"."""
+    terms = {stem(t) for t in tokenize(query)}
     needed = min(2, len(terms))
-    scored = [(len(terms & set(tokenize(d.text))), d) for d in docs]
+    scored = [(len(terms & {stem(t) for t in tokenize(d.text)}), d) for d in docs]
     scored = [(n, d) for n, d in scored if n >= needed and n > 0]
     return [d for _, d in sorted(scored, key=lambda s: s[0], reverse=True)]
+
+
+def stem(word: str) -> str:
+    """A light English stemmer: cancelled, cancelling → cancel; charged, charges → charg."""
+    for suffix in ("ing", "ed", "es", "ly", "s"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 4:
+            word = word[: -len(suffix)]
+            break
+    if len(word) >= 5 and word[-1] == word[-2]:
+        word = word[:-1]
+    if len(word) > 4 and word.endswith("e"):
+        word = word[:-1]
+    return word

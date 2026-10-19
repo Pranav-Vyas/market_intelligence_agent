@@ -39,16 +39,23 @@ Never repeat a query you already tried on the same source. "reason" is one short
 
 
 def scout(
-    c: Competitor, market: str, *, focus: str | None = None, known: frozenset[str] = frozenset()
+    c: Competitor,
+    market: str,
+    *,
+    focus: str | None = None,
+    known: frozenset[str] = frozenset(),
+    tried_before: tuple[str, ...] = (),
 ) -> tuple[list[Document], list[dict]]:
     """(documents, steps). Each step is a trace row: agent, competitor, action, result_summary,
-    requests, tokens. `known` holds ids of this competitor's documents from earlier rounds."""
+    requests, tokens; searches also carry source, query, new and focus. `known` holds ids of
+    this competitor's documents from earlier rounds, `tried_before` the searches it already ran
+    on the same focus, so a second research round tries something new."""
     s = runtime.settings()
     llm = runtime.llm()
     docs: list[Document] = []
     seen = set(known)
     steps: list[dict] = []
-    tried: list[str] = []
+    tried: list[str] = [f"{t} (earlier round)" for t in tried_before]
     max_steps = s.focus_scout_steps if focus else s.max_scout_steps
 
     def run(source: str, query: str | None, label: str, before: tuple[int, int]) -> None:
@@ -64,7 +71,8 @@ def scout(
         docs.extend(new)
         tried.append(f"{source} {label}: {len(new)} new" + (f" (failed: {error})" if error else ""))
         summary = f"{source} {label}: {len(new)} new documents, {_count(docs, known)} in total"
-        steps.append(_step(c, "search", summary + (f"; failed: {error}" if error else ""), before))
+        row = _step(c, "search", summary + (f"; failed: {error}" if error else ""), before)
+        steps.append({**row, "source": source, "query": query, "new": len(new), "focus": focus})
 
     with llm.phase(COLLECTION):
         if not focus:
