@@ -32,7 +32,7 @@ from langgraph.types import Send
 
 from mia import pipeline, runtime, stubs
 from mia.agent import customer_scout as customer
-from mia.agent import discovery_scout
+from mia.agent import discovery_scout, verifier
 from mia.agent import product_scout as product
 from mia.agent.state import SCHEMA_TYPES, ResearchState, ScoutTask
 from mia.collectors.complaints import COMPLAINT_SOURCES
@@ -135,7 +135,7 @@ def build_graph() -> StateGraph:
     g.add_node("product_scout", product_scout)
     g.add_node("customer_scout", customer_scout)
     g.add_node("analyst", analyst)
-    g.add_node("verifier", verifier)
+    g.add_node("verifier", verifier_node)
     g.add_node("report", report)
     g.add_edge(START, "discovery")
     g.add_conditional_edges(
@@ -144,7 +144,7 @@ def build_graph() -> StateGraph:
     g.add_edge("product_scout", "analyst")
     g.add_edge("customer_scout", "analyst")
     g.add_edge("analyst", "verifier")
-    g.add_edge("verifier", "report")
+    g.add_conditional_edges("verifier", after_verifier, ["customer_scout", "report"])
     g.add_edge("report", END)
     return g
 
@@ -215,19 +215,31 @@ def customer_scout(task: ScoutTask, config) -> dict:
 
 
 def analyst(state: ResearchState, config) -> dict:
+    """Builds the evidence index and analyzes everything collected so far. Complaints are only
+    extracted from documents that weren't read in an earlier round."""
     before = runtime.llm().thread_usage()
     competitors = state.get("competitors", [])
     docs = linear_order(state.get("documents", []), competitors)
+    done = set(state.get("extracted_docs", []))
     index = pipeline.build_index(state["market"], docs)
-    analysis = pipeline.analyze(competitors, docs, index)
+    analysis = pipeline.analyze(
+        competitors,
+        docs,
+        index,
+        known_complaints=state.get("complaints", []),
+        extract_from=[d for d in docs if d.id not in done],
+    )
     known = {c.id for c in state.get("complaints", [])}
+    new = [c for c in analysis.complaints if c.id not in known]
     summary = (
-        f"{len(analysis.complaints)} complaints, {len(analysis.clusters)} clusters, "
+        f"{len(docs) - len(done)} new documents, {len(new)} new complaints "
+        f"({len(analysis.complaints)} in total), {len(analysis.clusters)} clusters, "
         f"{len(analysis.ranked)} ranked, {len(analysis.weak)} weak signals"
     )
     return {
         "features": analysis.features,
-        "complaints": [c for c in analysis.complaints if c.id not in known],
+        "complaints": new,
+        "extracted_docs": [d.id for d in docs],
         "clusters": analysis.clusters,
         "opportunities": analysis.ranked,
         "weak_signals": analysis.weak,
@@ -235,22 +247,31 @@ def analyst(state: ResearchState, config) -> dict:
     }
 
 
-def verifier(state: ResearchState, config) -> dict:
-    before = runtime.llm().thread_usage()
-    _, index = pipeline.load_index(state["market"])
-    ranked, verification = pipeline.check(
-        state.get("opportunities", []), state.get("complaints", []), index
-    )
-    summary = (
-        f"{verification['opportunities_verified']}/{verification['opportunities']} verified, "
-        f"{verification['quotes_passed']}/{verification['quotes_checked']} quotes passed"
-    )
-    return {
-        "opportunities": ranked,
-        "verification": verification,
-        "verify_round": state.get("verify_round", 0) + 1,
-        "trace": [_trace(state, config, "verifier", "verify", summary, before)],
-    }
+def verifier_node(state: ResearchState, config) -> dict:
+    update, rows = verifier.verify_round(state)
+    return {**update, "trace": [_row(state, config, row) for row in rows]}
+
+
+def after_verifier(state: ResearchState) -> list[Send] | str:
+    """Targeted research on the weak opportunities the Verifier picked, else the report."""
+    by_name = {c.name: (i, c) for i, c in enumerate(state.get("competitors", []))}
+    sends = []
+    for target in state.get("research") or []:
+        for name in target["competitors"]:
+            if name not in by_name:
+                continue
+            position, c = by_name[name]
+            known = [d.id for d in state.get("documents", []) if d.company == name]
+            task = ScoutTask(
+                run_id=state["run_id"],
+                market=state["market"],
+                competitor=c,
+                position=position,
+                focus=target["label"],
+                known=known,
+            )
+            sends.append(Send("customer_scout", task))
+    return sends or "report"
 
 
 def report(state: ResearchState, config) -> dict:
@@ -278,6 +299,15 @@ def report(state: ResearchState, config) -> dict:
             "offline": state.get("offline", False),
             "engine": "graph",
             "run_id": state["run_id"],
+            "agent": {
+                "discovery_rounds": state.get("discovery_round", 0),
+                "verify_rounds": state.get("verify_round", 0),
+                "researched": [
+                    row["result_summary"]
+                    for row in state.get("trace", [])
+                    if row.get("agent") == "verifier" and row.get("action") == "compare"
+                ],
+            },
         },
     )
     run_dir = runtime.settings().runs_dir / pipeline.slugify(state["market"]) / _stamp(state)

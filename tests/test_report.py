@@ -164,3 +164,16 @@ def test_method_reports_verification():
     assert "- Verification: 1/2 ranked gaps verified; 8/10 quotes passed (80%)" in render(
         _report(stats=stats)
     )
+
+
+def test_method_lists_agent_rounds_and_research_results():
+    stats = {
+        "agent": {
+            "discovery_rounds": 1,
+            "verify_rounds": 3,
+            "researched": ["after research: 'X' weak 5.0 → 'X' ranked 6.0 (+3), CHANGED"],
+        }
+    }
+    md = render(_report(stats=stats))
+    assert "- Agents: 1 discovery rounds, 2 rounds of follow-up research" in md
+    assert "  - 'X' weak 5.0 → 'X' ranked 6.0 (+3), CHANGED" in md

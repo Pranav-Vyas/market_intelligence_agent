@@ -10,6 +10,7 @@ import json
 import re
 import time
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -104,12 +105,21 @@ def pricing_for(c: Competitor, docs: list[Document]) -> list[PricingTier]:
     return extract_pricing(c, pages)
 
 
-def analyze(competitors: list[Competitor], docs: list[Document], index: HybridIndex) -> Analysis:
+def analyze(
+    competitors: list[Competitor],
+    docs: list[Document],
+    index: HybridIndex,
+    *,
+    known_complaints: Sequence[Complaint] = (),
+    extract_from: list[Document] | None = None,
+) -> Analysis:
     """Features, complaints, clusters, coverage and scores: everything between the collected
-    documents and verification."""
+    documents and verification. Complaints are extracted from `extract_from` (default: all
+    documents) and added to `known_complaints`, so a second round only reads new documents."""
     features = build_feature_matrix(competitors, index)
-    complaint_chunks = chunk_documents([d for d in docs if d.source_type in COMPLAINT_SOURCE_TYPES])
-    complaints = extract_complaints(complaint_chunks)
+    todo = docs if extract_from is None else extract_from
+    chunks = chunk_documents([d for d in todo if d.source_type in COMPLAINT_SOURCE_TYPES])
+    complaints = list(known_complaints) + extract_complaints(chunks)
     clusters = cluster_complaints(complaints)
     coverage = {cl.id: assess_coverage(cl, competitors, index) for cl in clusters}
     ranked, weak = score_opportunities(clusters, coverage, len(competitors))

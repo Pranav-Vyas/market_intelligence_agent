@@ -33,12 +33,14 @@ class ResearchState(TypedDict, total=False):
     documents: Annotated[list[Document], operator.add]  # appended by parallel scouts
     pricing: Annotated[list[PricingTier], operator.add]
     complaints: Annotated[list[Complaint], operator.add]  # the Analyst appends only new ids
+    extracted_docs: list[str]  # documents whose complaints were already extracted
     features: list[FeatureCell]
     clusters: list[ComplaintCluster]
     opportunities: list[Opportunity]
     weak_signals: list[Opportunity]
     verification: dict
     verify_round: int
+    research: list[dict]  # the Verifier's targets for the next research round
     run_dir: str
     trace: Annotated[list[dict], operator.add]
 
