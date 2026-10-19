@@ -54,7 +54,9 @@ def test_trace_has_one_entry_per_scout_and_stage(s, offline_world):
     result = graph.run(MARKET, settings=s, llm_client=_llm(s))
     rows = [json.loads(line) for line in (result.run_dir / "trace.jsonl").read_text().splitlines()]
     agents = [r["agent"] for r in rows]
-    assert agents.count("product_scout") == 3 and agents.count("customer_scout") == 3
+    assert agents.count("product_scout") == 3
+    customer = [r for r in rows if r["agent"] == "customer_scout"]
+    assert {r["competitor"] for r in customer} == {"Noted", "Scribely", "Recapper"}
     assert {"discovery", "analyst", "verifier", "report"} <= set(agents)
     scouts = [r for r in rows if r["agent"].endswith("_scout")]
     assert len({r["step"] for r in scouts}) == 1  # all six branches ran in the same step

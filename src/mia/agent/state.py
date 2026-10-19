@@ -49,7 +49,8 @@ class ScoutTask(TypedDict):
     market: str
     competitor: Competitor
     position: int  # the competitor's rank, used to put branch results back in a fixed order
-    focus: str | None  # targeted research: the pain point to dig into (Day 6)
+    focus: str | None  # targeted research: the pain point to dig into
+    known: list[str]  # ids of this competitor's documents from earlier rounds (with a focus)
 
 
 SCHEMA_TYPES = (
