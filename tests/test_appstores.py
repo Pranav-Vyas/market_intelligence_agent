@@ -114,6 +114,9 @@ def test_second_run_is_served_from_the_cache(stores):
 def test_query_keeps_only_matching_reviews(stores):
     docs = collect_complaints(ACME, MARKET, "app_store", query="calendar events")
     assert [d.title for d in docs] == ["Calendar sync"]
+    # one shared word ("meeting") isn't enough for a two-word query
+    assert collect_complaints(ACME, MARKET, "app_store", query="meeting dropped") == []
+    assert len(collect_complaints(ACME, MARKET, "app_store", query="crashes")) == 1
 
 
 def test_app_store_search_skips_other_products_with_the_same_name(stores):

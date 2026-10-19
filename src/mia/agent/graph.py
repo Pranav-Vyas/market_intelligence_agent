@@ -85,6 +85,7 @@ def run(
             if not resume:
                 graph.invoke(initial_state(run_id, market or "", offline), config)
             elif "run_dir" not in saved.values:  # the report node is the last step
+                _carry_over(saved.values.get("trace", []))
                 # Continue from the last checkpoint. Branches that finished before the stop
                 # saved their results as pending writes; only the unfinished ones run again.
                 graph.invoke(None, config)
@@ -94,6 +95,16 @@ def run(
     run_dir = Path(final["run_dir"])
     report = MarketReport.model_validate_json((run_dir / "run.json").read_text(encoding="utf-8"))
     return pipeline.RunResult(report=report, run_dir=run_dir)
+
+
+COLLECTING_AGENTS = ("discovery", "product_scout", "customer_scout")
+
+
+def _carry_over(trace: list[dict]) -> None:
+    """A resumed run keeps counting from the requests its trace already records."""
+    total = sum(r.get("requests", 0) for r in trace)
+    collection = sum(r.get("requests", 0) for r in trace if r.get("agent") in COLLECTING_AGENTS)
+    runtime.llm().carry_over(total, {COLLECTION: collection})
 
 
 def new_run_id(market: str) -> str:

@@ -221,3 +221,39 @@ def test_a_failed_call_gives_its_collection_request_back(settings):
         llm.complete("x")
     assert llm.usage.by_phase == {"collection": 0}
     assert llm.usage.requests == 0
+
+
+class QuotaBackend(FakeBackend):
+    """The smart model's daily quota is used up; the bulk model works."""
+
+    def generate(self, model, req):
+        if model == "smart-model":
+            self.calls.append({"model": model, "prompt": req.prompt})
+            raise TransientError("429 RESOURCE_EXHAUSTED ... 'retryDelay': '62293s'")
+        return super().generate(model, req)
+
+    def retry_delay(self, exc):
+        return 62293.0 if "62293s" in str(exc) else None
+
+
+def test_a_used_up_daily_quota_is_not_retried_and_the_model_is_skipped_afterwards(settings):
+    sleeps = []
+    backend = QuotaBackend(responder=lambda req: "from bulk")
+    llm = LLM(settings, backends={"fake": backend}, sleep=sleeps.append)
+    assert llm.complete("first", model="smart") == "from bulk"
+    assert llm.complete("second", model="smart") == "from bulk"
+    smart_calls = [c for c in backend.calls if c["model"] == "smart-model"]
+    assert len(smart_calls) == 1  # no retries, and skipped for the second call
+    assert [t for t in sleeps if t > 0.01] == []  # only the throttle's millisecond gaps
+    assert llm.usage.fallbacks == 2
+
+
+def test_a_short_retry_delay_is_waited_for(settings):
+    class Busy(FakeBackend):
+        def retry_delay(self, exc):
+            return 7.0
+
+    sleeps = []
+    llm = LLM(settings, backends={"fake": Busy([TransientError(), "ok"])}, sleep=sleeps.append)
+    assert llm.complete("x") == "ok"
+    assert [t for t in sleeps if t > 0.01] == [7.0]  # above the 2 s backoff, below the cap
