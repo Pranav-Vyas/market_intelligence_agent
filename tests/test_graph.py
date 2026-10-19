@@ -96,8 +96,11 @@ def test_a_stopped_run_resumes_without_redoing_finished_steps(s, offline_world, 
     # 3 discovery rounds: the fixture world has 3 competitors, fewer than min_competitors (5)
     assert calls == {"discover": 3, "official": 3, "analyze": 1}
 
-    result = graph.run(resume=run_id, settings=s, llm_client=_llm(s))
+    resumed = _llm(s)
+    result = graph.run(resume=run_id, settings=s, llm_client=resumed)
     assert calls == {"discover": 3, "official": 3, "analyze": 2}  # only the failed step reran
+    rows = [json.loads(line) for line in (result.run_dir / "trace.jsonl").read_text().splitlines()]
+    assert resumed.usage.requests == sum(r["requests"] for r in rows)  # the budget is per run
     assert result.report.opportunities
     assert result.report.stats["run_id"] == run_id
 
