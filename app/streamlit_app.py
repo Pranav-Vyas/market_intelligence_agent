@@ -1,20 +1,28 @@
-"""Streamlit v1 – Market Gap Scout browser (task C11, Day 5).
+"""Market Gap Scout browser (tasks C11, C12).
 
-Pick a run → tabs for Competitors / Features / Pricing / Complaints / Gaps / Agent Trace.
+Pick a run → tabs for Competitors / Features / Pricing / Complaints / Gaps / Agent trace /
+Report. The trace can be browsed per scout and per competitor, next to the graph diagram.
 
 Run with:
-    streamlit run app/streamlit_app.py
+    uv sync --extra ui
+    uv run streamlit run app/streamlit_app.py
+
+Everything shown comes from scraped pages and reviews, so all of it is HTML-escaped before it
+goes into the page's custom HTML.
 """
 
 from __future__ import annotations
 
 import contextlib
+import html
 import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 import streamlit as st
+
+from mia.config import get_settings
 
 # ── page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -123,8 +131,8 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 )
 
 # ── constants & helpers ────────────────────────────────────────────────────────
-REPO_ROOT = Path(__file__).resolve().parents[1]
-RUNS_DIR = REPO_ROOT / "data" / "runs"
+SETTINGS = get_settings()
+RUNS_DIR = SETTINGS.runs_dir  # follows MIA_DATA_DIR, like the CLI
 SOURCE_LABEL = {
     "hn": "Hacker News",
     "app_store": "App Store",
@@ -144,6 +152,7 @@ STATUS_CLASS = {
     "unknown": "cell-unknown",
 }
 BUCKET_ORDER = ["free", "pro", "business", "enterprise", "other"]
+MERMAID_JS = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
 
 
 def find_runs() -> list[tuple[str, Path]]:
@@ -178,6 +187,27 @@ def load_trace(run_json_path: Path) -> list[dict]:
 def short(text: str, n: int = 200) -> str:
     text = " ".join(text.split())
     return text if len(text) <= n else text[: n - 1].rstrip() + "…"
+
+
+def esc(text: object) -> str:
+    """Scraped text is data: escape it before it goes into the page's HTML."""
+    return html.escape(str(text), quote=True)
+
+
+def source_link(url: str | None) -> str:
+    return f' · <a href="{esc(url)}" target="_blank">source</a>' if url else ""
+
+
+def failed_gates(cl: dict) -> str:
+    s = SETTINGS
+    out = []
+    if len(cl.get("complaint_ids", [])) < s.gate_min_complaints:
+        out.append(f"{len(cl['complaint_ids'])}/{s.gate_min_complaints} complaints")
+    if cl.get("distinct_docs", 0) < s.gate_min_docs:
+        out.append(f"{cl['distinct_docs']}/{s.gate_min_docs} documents")
+    if len(cl.get("source_types", [])) < s.gate_min_source_types:
+        out.append(f"{len(cl['source_types'])}/{s.gate_min_source_types} source types")
+    return ", ".join(out)
 
 
 def badge(text: str, cls: str) -> str:
@@ -234,7 +264,7 @@ with st.sidebar:
     if stubs_used:
         st.warning(f"⚠️ {len(stubs_used)} stub(s) still active", icon="🧪")
     st.markdown("---")
-    st.caption("Market Gap Scout · Day 5 UI (C11)")
+    st.caption("Market Gap Scout")
 
 # ── unpack report ──────────────────────────────────────────────────────────────
 market: str = report.get("market", "Unknown market")
@@ -261,8 +291,16 @@ c5.metric("Verification rate", f"{vr:.0%}" if vr is not None else "—")
 st.markdown("---")
 
 # ── tabs ───────────────────────────────────────────────────────────────────────
-tab_comp, tab_feat, tab_price, tab_compl, tab_gaps, tab_trace = st.tabs(
-    ["🏢 Competitors", "🔬 Features", "💰 Pricing", "📣 Complaints", "🚀 Gaps", "🕵️ Trace"]
+tab_comp, tab_feat, tab_price, tab_compl, tab_gaps, tab_trace, tab_report = st.tabs(
+    [
+        "🏢 Competitors",
+        "🔬 Features",
+        "💰 Pricing",
+        "📣 Complaints",
+        "🚀 Gaps",
+        "🕵️ Agent trace",
+        "📄 Report",
+    ]
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -300,7 +338,7 @@ with tab_comp:
                 yaxis_title="Mention count",
                 font=dict(family="Inter", color="#c9d1d9"),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         except ImportError:
             pass
 
@@ -318,7 +356,10 @@ with tab_comp:
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_feat:
     st.markdown("### Feature matrix")
-    st.caption("✓ offered · ~ partial · ✗ not offered · ? unknown")
+    st.caption(
+        "✓ offered · ~ partial · ✗ not offered · ? unknown. "
+        "Hover a mark for its quote; click it to open the page."
+    )
 
     if not features:
         st.info("No feature data in this run.")
@@ -330,7 +371,7 @@ with tab_feat:
         cell_map = {(f["company"], f["feature"]): f for f in features}
 
         header_html = "<th style='text-align:left;padding:8px 12px'>Feature</th>" + "".join(
-            f"<th style='padding:8px 12px'>{n}</th>" for n in comp_names
+            f"<th style='padding:8px 12px'>{esc(n)}</th>" for n in comp_names
         )
         rows_html = ""
         for feat in feat_names:
@@ -341,17 +382,19 @@ with tab_feat:
                 icon = STATUS_ICON.get(st_v, "?")
                 cls = STATUS_CLASS.get(st_v, "cell-unknown")
                 tip = (
-                    f'title="{short(cell.get("quote") or "", 120)}"'
+                    f'title="{esc(short(cell.get("quote") or "", 120))}"'
                     if cell and cell.get("quote")
                     else ""
                 )
+                if cell and cell.get("url") and st_v in ("yes", "partial", "no"):
+                    icon = f'<a href="{esc(cell["url"])}" target="_blank" class="{cls}">{icon}</a>'
                 cells += (
                     f'<td class="{cls}" {tip}'
                     f' style="text-align:center;padding:6px 12px">{icon}</td>'
                 )
             rows_html += (
                 f"<tr><td style='padding:6px 12px;color:#c9d1d9'>"
-                f"<strong>{feat}</strong></td>{cells}</tr>"
+                f"<strong>{esc(feat)}</strong></td>{cells}</tr>"
             )
 
         _table_style = (
@@ -412,7 +455,7 @@ with tab_feat:
                 legend=dict(orientation="h", yanchor="bottom", y=1.02),
             )
             st.markdown("#### Feature coverage by competitor count")
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
         except ImportError:
             pass
 
@@ -442,13 +485,15 @@ with tab_price:
                 if not tiers:
                     cells_p += "<td style='color:#6e7681;text-align:center;padding:6px 12px'>—</td>"
                 else:
-                    txt = "<br>".join(fmt_price(t) for t in tiers)
+                    txt = "<br>".join(esc(fmt_price(t)) for t in tiers)
                     cells_p += (
                         f"<td style='color:#c9d1d9;text-align:center;padding:6px 12px'>{txt}</td>"
                     )
+            page = next((t["source_url"] for t in pricing if t["company"] == comp), None)
             rows_p += (
                 f"<tr><td style='padding:6px 12px'>"
-                f"<strong style='color:#e6edf3'>{comp}</strong></td>{cells_p}</tr>"
+                f"<strong style='color:#e6edf3'>{esc(comp)}</strong>{source_link(page)}"
+                f"</td>{cells_p}</tr>"
             )
 
         _table_style_p = (
@@ -498,7 +543,7 @@ with tab_price:
                     font=dict(family="Inter", color="#c9d1d9"),
                 )
                 st.markdown("#### Price distribution by tier bucket")
-                st.plotly_chart(fig3, use_container_width=True)
+                st.plotly_chart(fig3, width="stretch")
         except ImportError:
             pass
 
@@ -536,7 +581,7 @@ with tab_compl:
                 showlegend=False,
                 font=dict(family="Inter", color="#c9d1d9"),
             )
-            st.plotly_chart(fig4, use_container_width=True)
+            st.plotly_chart(fig4, width="stretch")
         except ImportError:
             pass
 
@@ -564,8 +609,9 @@ with tab_compl:
                         src = SOURCE_LABEL.get(src_type, src_type)
                         who = f"{comp.get('company', '')} · " if comp.get("company") else ""
                         st.markdown(
-                            f'<div class="quote-block">"{short(comp["quote"], 200)}"'
-                            f'<br><small style="color:#6e7681">{who}{src}</small></div>',
+                            f'<div class="quote-block">"{esc(short(comp["quote"], 200))}"'
+                            f'<br><small style="color:#6e7681">{esc(who)}{esc(src)}'
+                            f"{source_link(comp.get('url'))}</small></div>",
                             unsafe_allow_html=True,
                         )
                         shown += 1
@@ -593,7 +639,7 @@ with tab_compl:
                     showlegend=False,
                 )
                 st.markdown("#### Complaint severity distribution")
-                st.plotly_chart(fig5, use_container_width=True)
+                st.plotly_chart(fig5, width="stretch")
             except ImportError:
                 pass
 
@@ -635,10 +681,17 @@ with tab_gaps:
                 yaxis=dict(autorange="reversed"),
                 font=dict(family="Inter", color="#c9d1d9"),
             )
-            st.plotly_chart(fig6, use_container_width=True)
+            st.plotly_chart(fig6, width="stretch")
         except ImportError:
             pass
 
+        ver = stats.get("verification") or {}
+        if ver:
+            st.caption(
+                f"Verification: {ver.get('opportunities_verified', 0)}/"
+                f"{ver.get('opportunities', 0)} gaps verified · {ver.get('quotes_passed', 0)}/"
+                f"{ver.get('quotes_checked', 0)} quotes passed the verbatim check and the judge"
+            )
         for i, opp in enumerate(opportunities, 1):
             cl = cluster_by_id.get(opp["cluster_id"], {})
             kind = opp.get("kind", "")
@@ -653,41 +706,43 @@ with tab_gaps:
                 else badge("unverified", "badge-unverified")
             )
             bd_str = " · ".join(f"{k} {v:.2f}" for k, v in opp.get("score_breakdown", {}).items())
-            st.markdown(
-                f"""<div class="opp-card">
-<div class="opp-title">{i}. {opp["title"]}</div>
-<div class="opp-score">{opp["score"]:.1f} / 10</div>
-{kind_b} {v_b}<br><br>
-<span class="stat-pill">📊 {cl.get("share", 0):.0%} of complaints</span>
-<span class="stat-pill">⚠️ severity {cl.get("mean_severity", 0):.1f}/3</span>
-<span class="stat-pill">🏢 coverage {opp["coverage"]:.0%}</span>
-<br><small style="color:#8b949e;font-size:.78rem">{bd_str}</small>
-<br><br><p style="color:#c9d1d9;font-size:.9rem">{opp.get("rationale", "")}</p>""",
-                unsafe_allow_html=True,
-            )
-            shown = 0
-            for eid in opp.get("evidence", []):
-                if shown >= 3:
-                    break
+            quotes = ""
+            for eid in opp.get("evidence", [])[:5]:
                 ev = complaint_by_id.get(eid)
                 if ev:
                     ev_src_type = ev.get("source_type", "")
                     src = SOURCE_LABEL.get(ev_src_type, ev_src_type)
                     who = f"{ev.get('company', '')} · " if ev.get("company") else ""
-                    st.markdown(
-                        f'<div class="quote-block">"{short(ev["quote"], 220)}"'
-                        f'<br><small style="color:#6e7681">{who}{src}</small></div>',
-                        unsafe_allow_html=True,
+                    quotes += (
+                        f'<div class="quote-block">"{esc(short(ev["quote"], 220))}"'
+                        f'<br><small style="color:#6e7681">{esc(who)}{esc(src)}'
+                        f"{source_link(ev.get('url'))}</small></div>"
                     )
-                    shown += 1
-            st.markdown("</div>", unsafe_allow_html=True)
+            n_comp = len(competitors) or 1
+            st.markdown(
+                f"""<div class="opp-card">
+<div class="opp-title">{i}. {esc(opp["title"])}</div>
+<div class="opp-score">{opp["score"]:.1f} / 10</div>
+{kind_b} {v_b}<br><br>
+<span class="stat-pill">📊 {cl.get("share", 0):.0%} of complaints</span>
+<span class="stat-pill">📄 {cl.get("distinct_docs", 0)} documents</span>
+<span class="stat-pill">⚠️ severity {cl.get("mean_severity", 0):.1f}/3</span>
+<span class="stat-pill">🏢 {opp["coverage"] * n_comp:g}/{n_comp} competitors claim it</span>
+<br><small style="color:#8b949e;font-size:.78rem">{esc(bd_str)}</small>
+<p style="color:#c9d1d9;font-size:.9rem;margin-top:.6rem">{esc(opp.get("rationale", ""))}</p>
+{quotes}
+</div>""",
+                unsafe_allow_html=True,
+            )
 
     if weak_signals:
         st.markdown("---")
-        st.markdown("#### ⚠️ Weak signals (didn't pass evidence gates)")
+        st.markdown("#### ⚠️ Weak signals (didn't pass the evidence gates)")
         for ws in weak_signals:
+            why = failed_gates(cluster_by_id.get(ws["cluster_id"], {}))
             st.markdown(
-                f'<span class="stat-pill">{ws["title"]} — {ws["score"]:.1f}/10</span>',
+                f'<span class="stat-pill">{esc(ws["title"])} — {ws["score"]:.1f}/10'
+                f"{' · missing ' + esc(why) if why else ''}</span>",
                 unsafe_allow_html=True,
             )
         st.markdown("")
@@ -727,7 +782,7 @@ with tab_gaps:
                 legend=dict(orientation="h", yanchor="bottom", y=1.02),
             )
             st.markdown("#### Score component breakdown")
-            st.plotly_chart(fig7, use_container_width=True)
+            st.plotly_chart(fig7, width="stretch")
         except ImportError:
             pass
 
@@ -740,62 +795,108 @@ with tab_trace:
     trace = load_trace(selected_path)
     if not trace:
         st.info(
-            "No trace file found for this run.\n\n"
-            "Traces are written by the LangGraph graph engine (`mia run --graph`)."
+            "No trace for this run: it was made with the linear pipeline "
+            "(`mia run --linear`). Agent runs (`mia run`) write `trace.jsonl`."
         )
     else:
+        researched = (stats.get("agent") or {}).get("researched") or []
+        a1, a2, a3, a4 = st.columns(4)
+        agent_stats = stats.get("agent") or {}
+        a1.metric("Graph steps", max((r.get("step") or 0) for r in trace))
+        a2.metric("Discovery rounds", agent_stats.get("discovery_rounds", "—"))
+        a3.metric("Research rounds", max(agent_stats.get("verify_rounds", 1) - 1, 0))
+        a4.metric("LLM requests in trace", sum(r.get("requests", 0) for r in trace))
+        for line in researched:
+            st.markdown(
+                f'<div class="quote-block" style="font-style:normal">🔁 {esc(line)}</div>',
+                unsafe_allow_html=True,
+            )
+
+        diagram = selected_path.parent / "graph.mmd"
+        if diagram.exists():
+            with st.expander("Graph diagram"):
+                # the diagram is written by our own graph code (graph.mmd) and escaped
+                st.iframe(
+                    f'<div class="mermaid">{esc(diagram.read_text(encoding="utf-8"))}</div>'
+                    f'<script src="{MERMAID_JS}"></script>'
+                    "<script>mermaid.initialize({startOnLoad: true, theme: 'dark'});</script>",
+                    height=520,
+                )
+
+        agents = sorted({r.get("agent", "") for r in trace if r.get("agent")})
+        names = sorted({r["competitor"] for r in trace if r.get("competitor")})
+        f1, f2 = st.columns(2)
+        sel_agent = f1.selectbox("Scout / agent", ["All"] + agents)
+        sel_comp = f2.selectbox("Competitor", ["All"] + names)
+        filtered = [
+            r
+            for r in trace
+            if (sel_agent == "All" or r.get("agent") == sel_agent)
+            and (sel_comp == "All" or r.get("competitor") == sel_comp)
+        ]
+
+        if sel_comp != "All":
+            st.markdown(f"#### {esc(sel_comp)}: what each scout did")
+        by_step: dict[Any, list[dict]] = defaultdict(list)
+        for r in filtered:
+            by_step[r.get("step")].append(r)
+        for step in sorted(by_step, key=lambda x: (x is None, x)):
+            rows = by_step[step]
+            parallel = len({(r.get("agent"), r.get("competitor")) for r in rows}) > 1
+            st.markdown(
+                f"**Step {step if step is not None else '?'}**"
+                + (f" · {len(rows)} actions in parallel" if parallel else "")
+            )
+            st.dataframe(
+                [
+                    {
+                        "agent": r.get("agent", ""),
+                        "competitor": r.get("competitor") or "—",
+                        "action": r.get("action", ""),
+                        "result": r.get("result_summary", ""),
+                        "requests": r.get("requests", 0),
+                        "tokens": r.get("tokens", 0),
+                    }
+                    for r in rows
+                ],
+                width="stretch",
+                hide_index=True,
+            )
+
         try:
             import plotly.express as px
 
-            df_rows = [
-                {
-                    "step": row.get("step") or i,
-                    "agent": row.get("agent", "—"),
-                    "competitor": row.get("competitor") or "(all)",
-                    "action": row.get("action", ""),
-                    "summary": row.get("result_summary", ""),
-                    "requests": row.get("requests", 0),
-                    "tokens": row.get("tokens", 0),
-                    "at": row.get("at", ""),
-                }
-                for i, row in enumerate(trace)
-            ]
+            per_agent: dict[str, int] = defaultdict(int)
+            for r in trace:
+                per_agent[r.get("agent", "—")] += r.get("requests", 0)
             fig8 = px.bar(
-                df_rows,
-                x="agent",
-                y="tokens",
-                color="agent",
-                hover_data=["action", "competitor", "summary"],
-                labels={"tokens": "Tokens used", "agent": "Agent"},
+                x=list(per_agent),
+                y=list(per_agent.values()),
+                labels={"x": "Agent", "y": "LLM requests"},
                 template="plotly_dark",
             )
             fig8.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(22,27,34,1)",
                 margin=dict(t=20, b=40, l=20, r=20),
-                height=300,
+                height=280,
                 font=dict(family="Inter", color="#c9d1d9"),
-                showlegend=False,
             )
-            st.plotly_chart(fig8, use_container_width=True)
+            st.markdown("#### LLM requests per agent")
+            st.plotly_chart(fig8, width="stretch")
         except ImportError:
             pass
 
-        agents = sorted({r.get("agent", "") for r in trace if r.get("agent")})
-        sel_agent = st.selectbox("Filter by agent", ["All"] + agents)
-        filtered = (
-            trace if sel_agent == "All" else [r for r in trace if r.get("agent") == sel_agent]
-        )
-
-        for row in filtered:
-            step_lbl = f"Step {row.get('step', '?')}" if row.get("step") is not None else ""
-            comp_lbl = f" · {row['competitor']}" if row.get("competitor") else ""
-            with st.expander(
-                f"[{step_lbl}] **{row.get('agent', '')}{comp_lbl}** — {row.get('action', '')}  "
-                f"·  {row.get('requests', 0)} req · {row.get('tokens', 0)} tok"
-            ):
-                st.markdown(f"**Result:** {row.get('result_summary', '')}")
-                if row.get("at"):
-                    st.caption(f"⏱ {row['at']}")
-
         st.caption(f"Total trace entries: {len(trace)}")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 7 – Report
+# ══════════════════════════════════════════════════════════════════════════════
+with tab_report:
+    report_md = selected_path.parent / "report.md"
+    if report_md.exists():
+        text = report_md.read_text(encoding="utf-8")
+        st.download_button("Download report.md", text, file_name="report.md")
+        st.markdown(text)  # rendered without unsafe HTML
+    else:
+        st.info("No report.md next to this run.")

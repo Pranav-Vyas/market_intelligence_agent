@@ -28,6 +28,10 @@ mia = "mia.cli:app"
 browser = [
     "playwright>=1.63.0",
 ]
+ui = [
+    "plotly>=7.1.0",
+    "streamlit>=1.66.0",
+]
 
 [dependency-groups]
 dev = [
