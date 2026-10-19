@@ -104,5 +104,48 @@
         "report_identical_to_linear": true
       }
     }
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-10-20",
+    "task": "Day 6: first live multi-agent graph run (scouts, discovery loop, verifier loop-back)",
+    "engine": "graph",
+    "run_id": "ai-meeting-assistants-20261019-185601",
+    "competitors": 8,
+    "documents_by_source": {
+      "official": 40,
+      "pricing": 7,
+      "hn": 172,
+      "app_store": 211
+    },
+    "complaints": 319,
+    "ranked_opportunities": 8,
+    "weak_signals": 12,
+    "verification": {
+      "opportunities": 8,
+      "opportunities_verified": 8,
+      "verification_rate": 1.0,
+      "quotes_checked": 54,
+      "quotes_passed": 49,
+      "quote_pass_rate": 0.907
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 3,
+      "researched": [
+        "after research: 'Audio upload failure and data loss' weak 6.6 \u2192 'Audio upload failure and data loss' weak 7.2 (+2 complaints), CHANGED",
+        "after research: 'Unexpected charges and difficult cancellation' weak 6.1 \u2192 'Unauthorized charges and difficult cancellation' weak 6.9 (+3 complaints), CHANGED",
+        "after research: 'Audio upload failure and data loss' weak 7.2 \u2192 'Fails to record and crashes' ranked+verified 9.3 (+37 complaints), CHANGED",
+        "after research: 'Unauthorized charges and difficult cancellation' weak 6.9 \u2192 'Unexpected double charges and billing errors' weak 5.7 (+0 complaints), CHANGED"
+      ]
+    },
+    "llm": {
+      "requests": 121,
+      "collection_requests": 45,
+      "collection_cap": 120,
+      "per_run_cap": 200
+    },
+    "parallel_branches_in_one_step": 16,
+    "notes": "The run stopped once on a DNS failure after the laptop slept and was resumed with `mia run --resume`. gemini-3.8-flash has a free-tier limit of 20 requests per day; the run used it up and fell back to flash-lite. Round-2 App Store searches ran before multi-word queries required two shared words, so some of the +37 complaints are loosely matched."
   }
 ]
