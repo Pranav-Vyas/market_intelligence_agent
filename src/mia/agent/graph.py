@@ -274,12 +274,14 @@ def after_verifier(state: ResearchState) -> list[Send] | str:
                 continue
             position, c = by_name[name]
             known = [d.id for d in state.get("documents", []) if d.company == name]
+            # every earlier targeted search for this competitor: pain points get renamed when
+            # they are re-clustered, so matching on the label alone would miss them
             tried = [
-                f'{r["source"]} "{r["query"]}": {r["new"]} new'
+                f'{r["source"]} "{r["query"]}": {r["new"]} new, for "{r["focus"]}"'
                 for r in state.get("trace", [])
                 if r.get("agent") == "customer_scout"
                 and r.get("competitor") == name
-                and r.get("focus") == target["label"]
+                and r.get("focus")
                 and r.get("query")
             ]
             task = ScoutTask(
