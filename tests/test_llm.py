@@ -191,3 +191,33 @@ def test_thinking_level_is_part_of_the_cache_key(llm, backend):
 def test_invalid_thinking_level_is_rejected(llm):
     with pytest.raises(LLMConfigError, match="Thinking level"):
         llm.complete("x", thinking="extreme")
+
+
+def test_collection_may_use_only_its_share_of_the_budget(settings):
+    from dataclasses import replace
+
+    from mia.llm import COLLECTION
+
+    s = replace(settings, max_llm_calls_per_run=10, scout_budget_share=0.6)
+    llm = LLM(s, backends={"fake": FakeBackend(responder=lambda req: "ok")}, sleep=lambda x: 0)
+    with llm.phase(COLLECTION):
+        for i in range(6):
+            llm.complete(f"scout {i}")
+        assert llm.phase_left(COLLECTION) == 0
+        with pytest.raises(LLMBudgetExceeded, match="collection phase"):
+            llm.complete("one more scout call")
+    for i in range(4):  # the Analyst and Verifier still have the rest
+        llm.complete(f"analysis {i}")
+    assert llm.usage.as_dict()["requests_by_phase"] == {"collection": 6}
+    assert llm.usage.requests == 10
+    assert llm.phase_left("analysis") is None
+
+
+def test_a_failed_call_gives_its_collection_request_back(settings):
+    from mia.llm import COLLECTION
+
+    llm = LLM(settings, backends={"fake": FakeBackend([ValueError("bad")])}, sleep=lambda x: 0)
+    with llm.phase(COLLECTION), pytest.raises(ValueError):
+        llm.complete("x")
+    assert llm.usage.by_phase == {"collection": 0}
+    assert llm.usage.requests == 0

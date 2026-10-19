@@ -57,6 +57,13 @@ class Settings:
     max_competitors: int = 8
     max_graph_steps: int = 40  # LangGraph recursion_limit: the last guard against loops
     max_concurrency: int = 4  # graph branches (scouts) running at once
+    scout_budget_share: float = 0.6  # collection may use at most this share of the request cap
+    max_scout_steps: int = 6  # Customer Scout actions per competitor
+    max_product_pages: int = 6  # pages a Product Scout fetches per competitor, homepage included
+    max_verify_rounds: int = 2  # verifier → targeted research → analyst loops
+    max_focus_targets: int = 2  # weak opportunities researched per round
+    max_focus_competitors: int = 3  # competitors searched per weak opportunity
+    focus_scout_steps: int = 2  # Customer Scout actions per targeted-research branch
     min_complaint_docs_per_company: int = 15
     max_complaint_docs_per_source: int = 40
 

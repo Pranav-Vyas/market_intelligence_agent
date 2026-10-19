@@ -29,7 +29,8 @@ import json
 import logging
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, TypeVar
@@ -40,6 +41,7 @@ from mia.config import Settings
 from mia.jsonfile import write_json
 
 T = TypeVar("T", bound=BaseModel)
+COLLECTION = "collection"
 R = TypeVar("R")
 log = logging.getLogger(__name__)
 
@@ -153,6 +155,7 @@ class Usage:
     output_tokens: int = 0
     fallbacks: int = 0  # smart-model calls answered by the bulk model
     by_model: dict[str, int] = field(default_factory=dict)
+    by_phase: dict[str, int] = field(default_factory=dict)  # e.g. {"collection": 12}
 
     def as_dict(self) -> dict:
         return {
@@ -162,6 +165,7 @@ class Usage:
             "output_tokens": self.output_tokens,
             "fallbacks": self.fallbacks,
             "requests_by_model": dict(self.by_model),
+            "requests_by_phase": dict(self.by_phase),
         }
 
 
@@ -185,6 +189,7 @@ class LLM:
         self._cache_dir = settings.cache_dir / "llm"
         self._lock = threading.Lock()  # usage, budget and throttle are shared by graph branches
         self._per_thread: dict[int, list[int]] = {}
+        self._local = threading.local()  # the calling thread's phase
 
     # ---- public API -------------------------------------------------------------------------
 
@@ -309,12 +314,18 @@ class LLM:
             return json.loads(path.read_text(encoding="utf-8"))["text"]
         if self.offline:
             raise LLMCacheMiss(f"No cached response for this {model} call (offline mode).")
+        phase = getattr(self._local, "phase", None)
         with self._lock:  # reserve the request first, so parallel branches can't overshoot
             if self.usage.requests >= self.settings.max_llm_calls_per_run:
                 raise LLMBudgetExceeded(
                     f"Reached MIA_MAX_LLM_CALLS_PER_RUN={self.settings.max_llm_calls_per_run}."
                 )
+            limit = self._phase_limit(phase)
+            if limit is not None and self.usage.by_phase.get(phase, 0) >= limit:
+                raise LLMBudgetExceeded(f"The {phase} phase has used its {limit} requests.")
             self.usage.requests += 1
+            if phase:
+                self.usage.by_phase[phase] = self.usage.by_phase.get(phase, 0) + 1
 
         provider, model_id = model.split("/", 1)
         try:
@@ -322,6 +333,8 @@ class LLM:
         except BaseException:
             with self._lock:
                 self.usage.requests -= 1
+                if phase:
+                    self.usage.by_phase[phase] -= 1
             raise
 
         with self._lock:
@@ -339,6 +352,31 @@ class LLM:
         }
         write_json(path, record)
         return raw.text
+
+    @contextmanager
+    def phase(self, name: str) -> Iterator[None]:
+        """Count this thread's calls towards a phase. "collection" (the scouts and discovery)
+        may use at most `scout_budget_share` of the request cap, so the Analyst and Verifier
+        always have requests left (SPEC.md §3)."""
+        previous = getattr(self._local, "phase", None)
+        self._local.phase = name
+        try:
+            yield
+        finally:
+            self._local.phase = previous
+
+    def phase_left(self, name: str) -> int | None:
+        """Requests the phase may still make, or None if it has no share of its own."""
+        limit = self._phase_limit(name)
+        if limit is None:
+            return None
+        with self._lock:
+            return max(0, limit - self.usage.by_phase.get(name, 0))
+
+    def _phase_limit(self, phase: str | None) -> int | None:
+        if phase != COLLECTION:
+            return None
+        return int(self.settings.max_llm_calls_per_run * self.settings.scout_budget_share)
 
     def thread_usage(self) -> tuple[int, int]:
         """(requests, tokens) made so far by the calling thread: one graph branch's share."""
