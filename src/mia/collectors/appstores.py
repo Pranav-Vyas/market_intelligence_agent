@@ -183,8 +183,10 @@ def _parse_time(value: str) -> datetime | None:
 
 
 def _matching(docs: list[Document], query: str) -> list[Document]:
-    """Reviews that share a word with the query, best overlap first."""
+    """Reviews that share at least two of the query's words (one for a one-word query), best
+    overlap first. One shared word is too loose: almost every review says "recording"."""
     terms = set(tokenize(query))
+    needed = min(2, len(terms))
     scored = [(len(terms & set(tokenize(d.text))), d) for d in docs]
-    scored = [(n, d) for n, d in scored if n > 0]
+    scored = [(n, d) for n, d in scored if n >= needed and n > 0]
     return [d for _, d in sorted(scored, key=lambda s: s[0], reverse=True)]
