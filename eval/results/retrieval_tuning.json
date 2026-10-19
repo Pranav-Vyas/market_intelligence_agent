@@ -1,0 +1,133 @@
+{
+  "queries": 36,
+  "documents": 364,
+  "defaults": {
+    "chunk_words": 300,
+    "overlap_words": 45,
+    "rrf_candidates": 50,
+    "rerank_depth": 30
+  },
+  "rows": [
+    {
+      "setting": "chunks 200 words, 30 overlap",
+      "chunks": 542,
+      "bm25 recall@10": 0.586,
+      "bm25 mrr@10": 0.823,
+      "bm25 ndcg@10": 0.66,
+      "bm25 latency_ms": 0,
+      "dense recall@10": 0.603,
+      "dense mrr@10": 0.744,
+      "dense ndcg@10": 0.617,
+      "dense latency_ms": 12,
+      "hybrid recall@10": 0.648,
+      "hybrid mrr@10": 0.816,
+      "hybrid ndcg@10": 0.696,
+      "hybrid latency_ms": 13,
+      "hybrid+rerank recall@10": 0.663,
+      "hybrid+rerank mrr@10": 0.88,
+      "hybrid+rerank ndcg@10": 0.736,
+      "hybrid+rerank latency_ms": 1656
+    },
+    {
+      "setting": "chunks 300 words, 45 overlap",
+      "chunks": 459,
+      "bm25 recall@10": 0.576,
+      "bm25 mrr@10": 0.8,
+      "bm25 ndcg@10": 0.644,
+      "bm25 latency_ms": 0,
+      "dense recall@10": 0.554,
+      "dense mrr@10": 0.707,
+      "dense ndcg@10": 0.579,
+      "dense latency_ms": 11,
+      "hybrid recall@10": 0.633,
+      "hybrid mrr@10": 0.792,
+      "hybrid ndcg@10": 0.672,
+      "hybrid latency_ms": 11,
+      "hybrid+rerank recall@10": 0.65,
+      "hybrid+rerank mrr@10": 0.898,
+      "hybrid+rerank ndcg@10": 0.725,
+      "hybrid+rerank latency_ms": 1614
+    },
+    {
+      "setting": "chunks 450 words, 68 overlap",
+      "chunks": 421,
+      "bm25 recall@10": 0.564,
+      "bm25 mrr@10": 0.783,
+      "bm25 ndcg@10": 0.627,
+      "bm25 latency_ms": 0,
+      "dense recall@10": 0.56,
+      "dense mrr@10": 0.727,
+      "dense ndcg@10": 0.58,
+      "dense latency_ms": 28,
+      "hybrid recall@10": 0.629,
+      "hybrid mrr@10": 0.807,
+      "hybrid ndcg@10": 0.671,
+      "hybrid latency_ms": 14,
+      "hybrid+rerank recall@10": 0.674,
+      "hybrid+rerank mrr@10": 0.88,
+      "hybrid+rerank ndcg@10": 0.738,
+      "hybrid+rerank latency_ms": 1462
+    },
+    {
+      "setting": "RRF candidates 20 per retriever",
+      "hybrid recall@10": 0.662,
+      "hybrid mrr@10": 0.795,
+      "hybrid ndcg@10": 0.682,
+      "hybrid latency_ms": 11,
+      "hybrid+rerank recall@10": 0.645,
+      "hybrid+rerank mrr@10": 0.898,
+      "hybrid+rerank ndcg@10": 0.72,
+      "hybrid+rerank latency_ms": 1409
+    },
+    {
+      "setting": "RRF candidates 50 per retriever",
+      "hybrid recall@10": 0.633,
+      "hybrid mrr@10": 0.792,
+      "hybrid ndcg@10": 0.672,
+      "hybrid latency_ms": 11,
+      "hybrid+rerank recall@10": 0.65,
+      "hybrid+rerank mrr@10": 0.898,
+      "hybrid+rerank ndcg@10": 0.725,
+      "hybrid+rerank latency_ms": 1430
+    },
+    {
+      "setting": "RRF candidates 100 per retriever",
+      "hybrid recall@10": 0.64,
+      "hybrid mrr@10": 0.792,
+      "hybrid ndcg@10": 0.674,
+      "hybrid latency_ms": 13,
+      "hybrid+rerank recall@10": 0.623,
+      "hybrid+rerank mrr@10": 0.894,
+      "hybrid+rerank ndcg@10": 0.695,
+      "hybrid+rerank latency_ms": 1446
+    },
+    {
+      "setting": "rerank depth 10",
+      "hybrid+rerank recall@10": 0.596,
+      "hybrid+rerank mrr@10": 0.847,
+      "hybrid+rerank ndcg@10": 0.667,
+      "hybrid+rerank latency_ms": 443
+    },
+    {
+      "setting": "rerank depth 20",
+      "hybrid+rerank recall@10": 0.637,
+      "hybrid+rerank mrr@10": 0.898,
+      "hybrid+rerank ndcg@10": 0.712,
+      "hybrid+rerank latency_ms": 888
+    },
+    {
+      "setting": "rerank depth 30",
+      "hybrid+rerank recall@10": 0.65,
+      "hybrid+rerank mrr@10": 0.898,
+      "hybrid+rerank ndcg@10": 0.725,
+      "hybrid+rerank latency_ms": 1402
+    },
+    {
+      "setting": "rerank depth 50",
+      "hybrid+rerank recall@10": 0.63,
+      "hybrid+rerank mrr@10": 0.898,
+      "hybrid+rerank ndcg@10": 0.716,
+      "hybrid+rerank latency_ms": 2589
+    }
+  ]
+}

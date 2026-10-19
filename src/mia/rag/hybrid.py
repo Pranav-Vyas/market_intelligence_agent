@@ -46,9 +46,10 @@ class HybridIndex:
         return self._dense
 
     def add(self, docs: list[Document]) -> None:
-        self._add_chunks(chunk_documents(docs))
+        self.add_chunks(chunk_documents(docs))
 
-    def _add_chunks(self, chunks: list[Chunk]) -> None:
+    def add_chunks(self, chunks: list[Chunk]) -> None:
+        """Add already-chunked text (e.g. to compare chunk sizes); `add` chunks documents."""
         known = {c.id for c in self.chunks}
         for chunk in chunks:  # the batch itself may repeat a document
             if chunk.id not in known:
@@ -86,7 +87,7 @@ class HybridIndex:
     @classmethod
     def load(cls, path: Path) -> HybridIndex:
         index = cls(dense_path=path / "chroma")
-        index._add_chunks(
+        index.add_chunks(
             [
                 Chunk.model_validate(c)
                 for c in json.loads((path / "chunks.json").read_text(encoding="utf-8"))
