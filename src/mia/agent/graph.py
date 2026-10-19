@@ -32,11 +32,14 @@ from langgraph.types import Send
 
 from mia import pipeline, runtime, stubs
 from mia.agent import customer_scout as customer
+from mia.agent import discovery_scout
+from mia.agent import product_scout as product
 from mia.agent.state import SCHEMA_TYPES, ResearchState, ScoutTask
 from mia.collectors.complaints import COMPLAINT_SOURCES
 from mia.collectors.dedupe import dedupe
 from mia.config import Settings
-from mia.llm import LLM
+from mia.discovery import MAX_EXTRA_ROUNDS, start_progress
+from mia.llm import COLLECTION, LLM
 from mia.schemas import Document, MarketReport, PricingTier
 
 CHECKPOINTS = "checkpoints.sqlite"
@@ -135,7 +138,9 @@ def build_graph() -> StateGraph:
     g.add_node("verifier", verifier)
     g.add_node("report", report)
     g.add_edge(START, "discovery")
-    g.add_conditional_edges("discovery", fan_out, ["product_scout", "customer_scout", "analyst"])
+    g.add_conditional_edges(
+        "discovery", after_discovery, ["discovery", "product_scout", "customer_scout", "analyst"]
+    )
     g.add_edge("product_scout", "analyst")
     g.add_edge("customer_scout", "analyst")
     g.add_edge("analyst", "verifier")
@@ -149,15 +154,32 @@ def build_graph() -> StateGraph:
 
 def discovery(state: ResearchState, config) -> dict:
     before = runtime.llm().thread_usage()
-    competitors = pipeline.discover_competitors(
-        state["market"], k=runtime.settings().max_competitors
+    round_ = state.get("discovery_round", 0)
+    progress, competitors, how = discovery_scout.step(
+        state["market"],
+        state.get("discovery") or start_progress(),
+        round_,
+        runtime.settings().max_competitors,
     )
-    summary = f"{len(competitors)} competitors: {', '.join(c.name for c in competitors)}"
+    summary = f"round {round_ + 1} ({how}) → {len(competitors)} competitors: " + ", ".join(
+        c.name for c in competitors
+    )
     return {
+        "discovery": progress,
         "competitors": competitors,
-        "discovery_round": state.get("discovery_round", 0) + 1,
-        "trace": [_trace(state, config, "discovery", "discover", summary, before)],
+        "discovery_round": round_ + 1,
+        "trace": [_trace(state, config, "discovery", "search_round", summary, before)],
     }
+
+
+def after_discovery(state: ResearchState) -> list[Send] | str:
+    """Loop back for another search round while too few competitors validated, else fan out."""
+    s = runtime.settings()
+    too_few = len(state.get("competitors", [])) < s.min_competitors
+    rounds_left = state.get("discovery_round", 0) <= MAX_EXTRA_ROUNDS
+    if too_few and rounds_left and runtime.llm().phase_left(COLLECTION):
+        return "discovery"
+    return fan_out(state)
 
 
 def fan_out(state: ResearchState) -> list[Send] | str:
@@ -174,18 +196,11 @@ def fan_out(state: ResearchState) -> list[Send] | str:
 
 
 def product_scout(task: ScoutTask, config) -> dict:
-    before = runtime.llm().thread_usage()
-    c = task["competitor"]
-    docs = dedupe(pipeline.collect_official(c))
-    pricing = pipeline.pricing_for(c, docs)
-    pages = sum(d.source_type != "pricing" for d in docs)
-    summary = f"{pages} official pages, {len(docs) - pages} pricing pages, {len(pricing)} tiers"
+    docs, pricing, rows = product.scout(task["competitor"])
     return {
         "documents": docs,
         "pricing": pricing,
-        "trace": [
-            _trace(task, config, "product_scout", "collect_official", summary, before, c.name)
-        ],
+        "trace": [_row(task, config, row) for row in rows],
     }
 
 
