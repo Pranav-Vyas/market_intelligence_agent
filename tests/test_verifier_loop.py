@@ -26,7 +26,7 @@ PRICE = "The plan is too expensive for a small team. We had to drop it."
 RECORDING = "It keeps dropping the recording halfway. Lost two calls."
 
 
-def fake_scout(c, market, *, focus=None, known=frozenset()):
+def fake_scout(c, market, *, focus=None, known=frozenset(), tried_before=()):
     """Round one: price complaints only in the App Store, recording complaints only on HN, so
     both are weak signals. Research on the price finds HN comments; on recording, nothing."""
     if focus is None:

@@ -152,3 +152,21 @@ def test_collection_budget_running_out_stops_the_scout(setup):
     assert len(docs) == 2
     assert steps[-1]["action"] == "stop"
     assert "collection phase has used its 0 requests" in steps[-1]["result_summary"]
+
+
+def test_a_second_research_round_is_told_what_was_tried_before(setup):
+    world = World({})
+    backend = setup(
+        world,
+        _actions(
+            {"action": "search", "source": "hn", "query": "cancel refund"},  # tried last round
+            {"action": "search", "source": "hn", "query": "billing error"},
+        ),
+    )
+    docs, steps = scout(
+        ACME, MARKET, focus="hard to cancel", tried_before=('hn "cancel refund": 0 new',)
+    )
+    assert 'hn "cancel refund": 0 new (earlier round)' in backend.calls[0]["prompt"]
+    assert [s["action"] for s in steps[:2]] == ["invalid", "search"]
+    assert world.calls == [("hn", "billing error")]
+    assert steps[1]["query"] == "billing error" and steps[1]["focus"] == "hard to cancel"

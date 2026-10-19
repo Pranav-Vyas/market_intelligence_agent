@@ -54,6 +54,7 @@ class ScoutTask(TypedDict):
     position: int  # the competitor's rank, used to put branch results back in a fixed order
     focus: str | None  # targeted research: the pain point to dig into
     known: list[str]  # ids of this competitor's documents from earlier rounds (with a focus)
+    tried: list[str]  # searches already run on this focus, so the next round tries new ones
 
 
 SCHEMA_TYPES = (
