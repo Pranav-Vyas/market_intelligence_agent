@@ -6,6 +6,7 @@
 | `retrieval_queries.jsonl` | 36 retrieval queries with document-level relevance labels (task C8) |
 | `run_retrieval.py` | Recall@10, MRR@10, nDCG@10 for BM25 / dense / hybrid / hybrid+rerank (task C9) |
 | `results/retrieval.{json,md}` | Latest retrieval numbers, per method and per query |
+| `tune_retrieval.py`, `results/retrieval_tuning.{json,md}` | Chunk size, RRF candidates and rerank depth, one at a time (task C13) |
 | `results/pipeline_runs.json` | Full-run statistics: documents, complaints, LLM requests, runtime |
 
 ## Retrieval
@@ -35,3 +36,27 @@ The eval reads the saved index of the demo market offline and never fetches anyt
 - Latency is the median per query on a laptop CPU, after the models have loaded.
 
 **When the corpus changes** (re-collection, new competitors), rebuild the candidate pool and re-judge before comparing numbers. Old labels may point at documents that no longer exist.
+
+## Retrieval tuning (task C13)
+
+```bash
+uv run python eval/tune_retrieval.py            # → results/retrieval_tuning.{json,md}
+```
+
+The script reads the demo market's documents from the cache. It varies one setting at a time
+from the defaults (300-word chunks with 45 words of overlap, 50 RRF candidates per retriever,
+rerank depth 30). Results from 2026-10-19:
+
+- **Chunk size:** 200-word chunks scored best for every method, but only slightly: nDCG@10
+  went up by 0.016 to 0.038 (hybrid+rerank 0.725 → 0.736). 450-word chunks helped the reranker
+  (0.738) but hurt plain hybrid.
+- **RRF candidates:** 50 is as good as 20 or 100 after reranking. 100 lets more noise into the
+  reranker (0.695).
+- **Rerank depth:** 30 is best. 10 and 20 miss relevant documents (0.667, 0.712). 50 is slower
+  (2.6 s per query) and no better (0.716).
+
+**Decision: keep the defaults for now.** The gains from 200-word chunks are small for 36 queries
+tuned and tested on the same set. The same chunks also feed complaint extraction and
+verification, so changing them would re-extract every complaint (about 20 requests) and
+invalidate the shared snapshot. Revisit when the snapshot is next refreshed (task B16), and
+re-label first if the corpus has changed.
