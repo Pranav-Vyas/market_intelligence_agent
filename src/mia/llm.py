@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -139,6 +140,11 @@ class GeminiBackend:
 
         return isinstance(exc, errors.APIError) and exc.code in (429, 500, 502, 503, 504)
 
+    def retry_delay(self, exc: Exception) -> float | None:
+        """Seconds Gemini asks us to wait, when it says. A daily quota answers with hours."""
+        match = re.search(r"retryDelay'?\"?:\s*'?\"?(\d+(?:\.\d+)?)s", str(exc))
+        return float(match.group(1)) if match else None
+
     def list_models(self) -> list[str]:
         names = []
         for m in self._client.models.list():
@@ -190,6 +196,7 @@ class LLM:
         self._lock = threading.Lock()  # usage, budget and throttle are shared by graph branches
         self._per_thread: dict[int, list[int]] = {}
         self._local = threading.local()  # the calling thread's phase
+        self._down: set[str] = set()  # models that stayed unavailable; skipped for this run
 
     # ---- public API -------------------------------------------------------------------------
 
@@ -245,16 +252,22 @@ class LLM:
         self, model: str, thinking: str | None, run: Callable[[str, str | None], R]
     ) -> R:
         full_model, default_thinking = self._resolve(model)
-        try:
-            return run(full_model, self._thinking(thinking, default_thinking))
-        except (LLMUnavailable, LLMCacheMiss) as err:
-            bulk = self.settings.model_bulk
-            if model != "smart" or not bulk or bulk == full_model:
-                raise
-            log.warning("%s is unavailable (%s); using the bulk model %s", full_model, err, bulk)
+        bulk = self.settings.model_bulk
+        can_fall_back = model == "smart" and bool(bulk) and bulk != full_model
+        if not (can_fall_back and full_model in self._down):
+            try:
+                return run(full_model, self._thinking(thinking, default_thinking))
+            except (LLMUnavailable, LLMCacheMiss) as err:
+                if not can_fall_back:
+                    raise
+                if isinstance(err, LLMUnavailable):  # skip it for the rest of the run
+                    with self._lock:
+                        self._down.add(full_model)
+                    log.warning("%s unavailable (%s); using %s from now on", full_model, err, bulk)
+        with self._lock:
             self.usage.fallbacks += 1
-            bulk_model, bulk_thinking = self._resolve("bulk")
-            return run(bulk_model, self._thinking(thinking, bulk_thinking))
+        bulk_model, bulk_thinking = self._resolve("bulk")
+        return run(bulk_model, self._thinking(thinking, bulk_thinking))
 
     def _resolve(self, model: str) -> tuple[str, str | None]:
         """Return the full model string and its default thinking level."""
@@ -394,9 +407,14 @@ class LLM:
             except Exception as exc:
                 if not backend.is_retryable(exc):
                     raise
+                delay = getattr(backend, "retry_delay", lambda e: None)(exc)
+                if delay is not None and delay > BACKOFF_MAX_S:  # e.g. the daily quota is used up
+                    hours = delay / 3600
+                    raise LLMUnavailable(f"{model}: quota used up, retry in {hours:.1f} h") from exc
                 if attempt == MAX_ATTEMPTS:
-                    raise LLMUnavailable(f"{model}: {exc}") from exc
-                self._sleep(min(BACKOFF_BASE_S * 2 ** (attempt - 1), BACKOFF_MAX_S))
+                    raise LLMUnavailable(f"{model}: {_first_line(exc)}") from exc
+                backoff = BACKOFF_BASE_S * 2 ** (attempt - 1)
+                self._sleep(min(max(backoff, delay or 0), BACKOFF_MAX_S))
         raise AssertionError("unreachable")
 
     def _throttle(self, model: str) -> None:
@@ -410,3 +428,7 @@ class LLM:
             self._last_call[model] = start
         if start > now:
             self._sleep(start - now)
+
+
+def _first_line(exc: Exception) -> str:
+    return str(exc).splitlines()[0][:200] if str(exc) else type(exc).__name__
