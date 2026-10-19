@@ -136,8 +136,11 @@ class GeminiBackend:
         )
 
     def is_retryable(self, exc: Exception) -> bool:
+        import httpx
         from google.genai import errors
 
+        if isinstance(exc, httpx.TransportError | ConnectionError | TimeoutError):
+            return True  # a dropped connection or DNS failure (e.g. after the laptop slept)
         return isinstance(exc, errors.APIError) and exc.code in (429, 500, 502, 503, 504)
 
     def retry_delay(self, exc: Exception) -> float | None:
@@ -390,6 +393,14 @@ class LLM:
         if phase != COLLECTION:
             return None
         return int(self.settings.max_llm_calls_per_run * self.settings.scout_budget_share)
+
+    def carry_over(self, requests: int, by_phase: dict[str, int]) -> None:
+        """Count requests an earlier process made for the same run (a resumed graph run), so the
+        per-run budget and collection's share still hold."""
+        with self._lock:
+            self.usage.requests += requests
+            for phase, n in by_phase.items():
+                self.usage.by_phase[phase] = self.usage.by_phase.get(phase, 0) + n
 
     def thread_usage(self) -> tuple[int, int]:
         """(requests, tokens) made so far by the calling thread: one graph branch's share."""
