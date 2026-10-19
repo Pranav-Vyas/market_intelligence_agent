@@ -147,5 +147,48 @@
     },
     "parallel_branches_in_one_step": 16,
     "notes": "The run stopped once on a DNS failure after the laptop slept and was resumed with `mia run --resume`. gemini-3.8-flash has a free-tier limit of 20 requests per day; the run used it up and fell back to flash-lite. Round-2 App Store searches ran before multi-word queries required two shared words, so some of the +37 complaints are loosely matched."
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-10-20",
+    "task": "Day 6: multi-agent graph after the research fixes (stemmed App Store matching, earlier searches carried into round 2); the snapshot is made from this run",
+    "engine": "graph",
+    "run_id": "ai-meeting-assistants-20261020-014638",
+    "complaints": 243,
+    "ranked_opportunities": 7,
+    "weak_signals": 13,
+    "verification": {
+      "opportunities": 7,
+      "opportunities_verified": 7,
+      "verification_rate": 1.0,
+      "quotes_checked": 49,
+      "quotes_passed": 39,
+      "quote_pass_rate": 0.796
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 3,
+      "researched": [
+        "after research: 'Audio upload failure and data loss' weak 6.6 \u2192 'Audio upload failure and data loss' weak 7.2 (+1 complaints), CHANGED",
+        "after research: 'Unexpected charges and difficult cancellation' weak 6.1 \u2192 'Unauthorized charges after subscription cancellation' weak 7.2 (+3 complaints), CHANGED",
+        "after research: 'Unauthorized charges after subscription cancellation' weak 7.2 \u2192 'Unauthorized charges after subscription cancellation' weak 7.3 (+1 complaints), CHANGED",
+        "after research: 'Audio upload failure and data loss' weak 7.2 \u2192 'Audio upload failures and data loss' weak 7.2 (+0 complaints), unchanged"
+      ]
+    },
+    "llm": {
+      "new_requests": 28,
+      "cache_hits": 136,
+      "requests_for_a_fresh_run": 164,
+      "collection_requests_in_trace_all_rounds": 10,
+      "per_run_cap": 200,
+      "collection_cap": 120
+    },
+    "runtime_s": 201.93,
+    "offline_replay": {
+      "requests": 0,
+      "cache_hits": 164,
+      "report_identical": true
+    },
+    "notes": "gemini-3.8-flash's free tier allows 20 requests a day; it was used up, so scout decisions fell back to flash-lite (28 fallbacks)."
   }
 ]
