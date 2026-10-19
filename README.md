@@ -36,6 +36,12 @@ uv run mia run "AI meeting assistants" --offline
 uv run mia stats                                 # documents per competitor and source
 ```
 
+### Browse a run in the browser
+```bash
+uv sync --extra ui                         # Streamlit and Plotly (not needed for the CLI)
+uv run streamlit run app/streamlit_app.py  # competitors, features, pricing, gaps, agent trace
+```
+
 ## Development
 ```bash
 uv run pytest                    # offline tests
