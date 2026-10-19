@@ -31,6 +31,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
 from mia import pipeline, runtime, stubs
+from mia.agent import customer_scout as customer
 from mia.agent.state import SCHEMA_TYPES, ResearchState, ScoutTask
 from mia.collectors.complaints import COMPLAINT_SOURCES
 from mia.collectors.dedupe import dedupe
@@ -189,21 +190,13 @@ def product_scout(task: ScoutTask, config) -> dict:
 
 
 def customer_scout(task: ScoutTask, config) -> dict:
-    before = runtime.llm().thread_usage()
-    c = task["competitor"]
-    limit = runtime.settings().max_complaint_docs_per_source
-    docs: list[Document] = []
-    counts = []
-    for source in COMPLAINT_SOURCES:
-        found = pipeline.collect_complaints(c, task["market"], source, limit=limit)
-        counts.append(f"{len(found)} {source}")
-        docs += found
-    return {
-        "documents": docs,
-        "trace": [
-            _trace(task, config, "customer_scout", "collect", ", ".join(counts), before, c.name)
-        ],
-    }
+    docs, rows = customer.scout(
+        task["competitor"],
+        task["market"],
+        focus=task.get("focus"),
+        known=frozenset(task.get("known") or ()),
+    )
+    return {"documents": docs, "trace": [_row(task, config, row) for row in rows]}
 
 
 def analyst(state: ResearchState, config) -> dict:
@@ -317,14 +310,22 @@ def _trace(
     state, config, agent: str, action: str, summary: str, before: tuple[int, int], competitor=None
 ) -> dict:
     requests, tokens = runtime.llm().thread_usage()
-    return {
-        "run_id": state["run_id"],
-        "step": (config or {}).get("metadata", {}).get("langgraph_step"),
+    row = {
         "agent": agent,
         "competitor": competitor,
         "action": action,
         "result_summary": summary,
         "requests": requests - before[0],
         "tokens": tokens - before[1],
+    }
+    return _row(state, config, row)
+
+
+def _row(state, config, row: dict) -> dict:
+    """A trace row with the run id, the graph step and the time added."""
+    return {
+        "run_id": state["run_id"],
+        "step": (config or {}).get("metadata", {}).get("langgraph_step"),
+        **row,
         "at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
