@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
@@ -68,21 +69,32 @@ def fetch_page(url: str, source_type: SourceType, company: str | None) -> Docume
     return doc
 
 
-def collect_official(c: Competitor) -> list[Document]:
+# choose(competitor, same-site links as (url, text), keyword-ranked links) →
+# (pricing url or None, feature page urls), or None to keep the keyword choice
+Chooser = Callable[[Competitor, list[tuple[str, str]], dict[str, list[str]]], tuple | None]
+
+
+def collect_official(c: Competitor, choose: Chooser | None = None) -> list[Document]:
+    """Homepage, pricing page and up to MAX_FEATURE_PAGES feature pages. Pages are picked by
+    keywords in their paths and link texts, or by `choose` (the Product Scout's LLM)."""
     home, html = _fetch(c.website, "official", c.name)
     if home is None:
         log.warning("%s: homepage %s could not be fetched", c.name, c.website)
         return []
 
     links = find_links(html, home.url)
-    pricing_url = c.pricing_url or (links["pricing"][0] if links["pricing"] else None)
-    pricing_url = pricing_url or urljoin(home.url, "/pricing")
+    pricing_url = links["pricing"][0] if links["pricing"] else None
+    features = links["features"][:MAX_FEATURE_PAGES]
+    picked = choose(c, site_links(html, home.url), links) if choose else None
+    if picked is not None:
+        pricing_url, features = picked[0] or pricing_url, picked[1][:MAX_FEATURE_PAGES]
+    pricing_url = c.pricing_url or pricing_url or urljoin(home.url, "/pricing")
 
     docs = [home]
     pricing = fetch_page(pricing_url, "pricing", c.name)
     if pricing is not None:
         docs.append(pricing)
-    for url in links["features"][:MAX_FEATURE_PAGES]:
+    for url in features:
         page = fetch_page(url, "official", c.name)
         if page is not None:
             docs.append(page)
@@ -214,6 +226,28 @@ def find_links(html: str, base_url: str) -> dict[str, list[str]]:
                 scored[kind][url] = rank if best is None else min(best, rank)
                 break
     return {kind: _best_first(urls) for kind, urls in scored.items()}
+
+
+def site_links(html: str, base_url: str, limit: int = 40) -> list[tuple[str, str]]:
+    """Same-site links worth considering, as (url, link text), in page order: no login, blog,
+    legal or similar pages, no duplicates, not the homepage itself."""
+    parser = _LinkParser()
+    parser.feed(html)
+    home = _site(base_url)
+    out: dict[str, str] = {}
+    for href, text in parser.links:
+        if not href or href.startswith(("mailto:", "tel:", "javascript:", "#")):
+            continue
+        url = _canonical(urljoin(base_url, href))
+        if _site(url) != home or url.rstrip("/") == _canonical(base_url).rstrip("/"):
+            continue
+        if any(w in f"{urlsplit(url).path.lower()} {text.lower()}" for w in SKIP_WORDS):
+            continue
+        if url not in out or (text and not out[url]):
+            out[url] = text
+        if len(out) == limit:
+            break
+    return list(out.items())
 
 
 def _best_first(scored: dict[str, int]) -> list[str]:

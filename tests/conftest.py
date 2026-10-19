@@ -132,11 +132,18 @@ def offline_world(monkeypatch):
         Competitor(name="Scribely", website="https://scribely.example.com"),
         Competitor(name="Recapper", website="https://recapper.example.com"),
     ]
+    from mia.agent import discovery_scout
+
     monkeypatch.setattr(pipeline, "discover_competitors", lambda market, k=8: competitors[:k])
+    monkeypatch.setattr(
+        discovery_scout,
+        "step",
+        lambda market, progress, round_, k: (progress, competitors[:k], "fixture competitors"),
+    )
     monkeypatch.setattr(
         pipeline,
         "collect_official",
-        lambda c: [
+        lambda c, choose=None: [
             d for d in docs if d.company == c.name and d.source_type in ("official", "pricing")
         ],
     )

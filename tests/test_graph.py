@@ -8,7 +8,7 @@ from dataclasses import replace
 import pytest
 
 from mia import pipeline
-from mia.agent import graph
+from mia.agent import discovery_scout, graph
 from mia.llm import LLM
 from tests.conftest import FakeBackend
 from tests.test_pipeline import _fake_llm_reply
@@ -68,7 +68,7 @@ def test_trace_has_one_entry_per_scout_and_stage(s, offline_world):
 def test_a_stopped_run_resumes_without_redoing_finished_steps(s, offline_world, monkeypatch):
     calls = {"discover": 0, "official": 0, "analyze": 0}
     discover, official, analyze = (
-        pipeline.discover_competitors,
+        discovery_scout.step,
         pipeline.collect_official,
         pipeline.analyze,
     )
@@ -86,17 +86,18 @@ def test_a_stopped_run_resumes_without_redoing_finished_steps(s, offline_world, 
             raise RuntimeError("daily quota reached")
         return analyze(*args, **kwargs)
 
-    monkeypatch.setattr(pipeline, "discover_competitors", counting("discover", discover))
+    monkeypatch.setattr(discovery_scout, "step", counting("discover", discover))
     monkeypatch.setattr(pipeline, "collect_official", counting("official", official))
     monkeypatch.setattr(pipeline, "analyze", crash_once)
 
     with pytest.raises(graph.RunStopped) as stopped:
         graph.run(MARKET, settings=s, llm_client=_llm(s))
     run_id = stopped.value.run_id
-    assert calls == {"discover": 1, "official": 3, "analyze": 1}
+    # 3 discovery rounds: the fixture world has 3 competitors, fewer than min_competitors (5)
+    assert calls == {"discover": 3, "official": 3, "analyze": 1}
 
     result = graph.run(resume=run_id, settings=s, llm_client=_llm(s))
-    assert calls == {"discover": 1, "official": 3, "analyze": 2}  # only the failed step reran
+    assert calls == {"discover": 3, "official": 3, "analyze": 2}  # only the failed step reran
     assert result.report.opportunities
     assert result.report.stats["run_id"] == run_id
 
@@ -106,9 +107,9 @@ def test_ctrl_c_in_one_scout_branch_reruns_only_that_branch(s, offline_world, mo
     official, complaints = pipeline.collect_official, pipeline.collect_complaints
     crashed = []
 
-    def count_official(c):
+    def count_official(c, choose=None):
         calls["official"] += 1
-        return official(c)
+        return official(c, choose=choose)
 
     def interrupt_recapper_once(c, market, source, **kwargs):
         calls["complaints"] += 1
@@ -127,6 +128,36 @@ def test_ctrl_c_in_one_scout_branch_reruns_only_that_branch(s, offline_world, mo
     assert calls["official"] == before["official"]  # finished branches are not repeated
     assert calls["complaints"] == before["complaints"] + 2  # Recapper's two sources, again
     assert result.report.opportunities
+
+
+def test_discovery_loops_while_too_few_competitors_validate(s, offline_world, monkeypatch):
+    found = offline_world["competitors"]
+    extra = [found[0].model_copy(update={"name": f"Extra {i}"}) for i in range(3)]
+    rounds = []
+
+    def step(market, progress, round_, k):
+        rounds.append(round_)
+        return progress, (found + extra)[: 2 + 2 * round_], f"round {round_}"
+
+    monkeypatch.setattr(discovery_scout, "step", step)
+    result = graph.run(MARKET, settings=s, llm_client=_llm(s))
+    assert rounds == [0, 1, 2]  # 2, then 4 competitors: too few; 6 after the third round
+    assert len(result.report.competitors) == 6
+    rows = [json.loads(line) for line in (result.run_dir / "trace.jsonl").read_text().splitlines()]
+    assert [r["agent"] for r in rows].count("discovery") == 3
+
+
+def test_discovery_stops_after_two_extra_rounds(s, offline_world, monkeypatch):
+    rounds = []
+
+    def step(market, progress, round_, k):
+        rounds.append(round_)
+        return progress, offline_world["competitors"][:1], f"round {round_}"
+
+    monkeypatch.setattr(discovery_scout, "step", step)
+    result = graph.run(MARKET, settings=s, llm_client=_llm(s))
+    assert rounds == [0, 1, 2]
+    assert [c.name for c in result.report.competitors] == ["Noted"]
 
 
 def test_resuming_a_finished_run_returns_its_report(s, offline_world):

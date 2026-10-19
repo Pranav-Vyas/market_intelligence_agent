@@ -125,32 +125,96 @@ class _Candidate:
     def name(self) -> str:
         return self.names.most_common(1)[0][0]
 
+    def to_dict(self) -> dict:
+        return {
+            "key": self.key,
+            "names": dict(self.names),
+            "websites": dict(self.websites),
+            "sources": sorted(self.sources),
+            "first_seen": self.first_seen,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> _Candidate:
+        return cls(
+            key=d["key"],
+            names=Counter(d["names"]),
+            websites=Counter(d["websites"]),
+            sources=set(d["sources"]),
+            first_seen=d["first_seen"],
+        )
+
 
 # ---- public API ------------------------------------------------------------------------------
 
 
 def discover_competitors(market: str, k: int = 8) -> list[Competitor]:
+    """The linear version: default queries, then up to MAX_EXTRA_ROUNDS rounds of
+    "<best so far> alternatives" while too few candidates validate."""
     s = runtime.settings()
-    candidates: dict[str, _Candidate] = {}
-    checked: dict[str, Competitor | None] = {}
-    seen_urls: set[str] = set()
-
-    queries = [q.format(market=market, year=date.today().year) for q in QUERIES]
+    progress = start_progress()
+    queries = default_queries(market)
     for round_ in range(MAX_EXTRA_ROUNDS + 1):
-        sources = _gather_sources(queries, seen_urls)
-        _add_mentions(market, sources, candidates)
-        ranked = sorted(candidates.values(), key=lambda c: (-len(c.sources), c.first_seen))
-        _validate(
-            market, [c for c in ranked if c.key not in checked][:CANDIDATES_TO_VALIDATE], checked
-        )
-        valid = [checked[c.key] for c in ranked if checked.get(c.key)]
+        progress = run_round(market, progress, queries)
+        valid = validated(progress)
         if len(valid) >= s.min_competitors or round_ == MAX_EXTRA_ROUNDS:
             break
-        seeds = [c.name for c in valid[:2]] or [market]
-        queries = [ALTERNATIVES_QUERY.format(name=n) for n in seeds]
+        queries = alternatives_queries(market, valid)
         log.info("Only %d competitors validated; searching for %s", len(valid), queries)
+    return finish(market, progress, k)
 
-    return _apply_overrides(market, valid[:k])
+
+# ---- rounds, for the Discovery Scout (agent/graph.py) -------------------------------------------
+# Progress is plain data (JSON-able dicts and lists) so the graph can checkpoint it between rounds.
+
+
+def start_progress() -> dict:
+    return {"rounds": 0, "queries": [], "seen_urls": [], "candidates": {}, "checked": {}}
+
+
+def default_queries(market: str) -> list[str]:
+    return [q.format(market=market, year=date.today().year) for q in QUERIES]
+
+
+def alternatives_queries(market: str, valid: list[Competitor]) -> list[str]:
+    return [ALTERNATIVES_QUERY.format(name=n) for n in [c.name for c in valid[:2]] or [market]]
+
+
+def run_round(market: str, progress: dict, queries: list[str]) -> dict:
+    """Search, read the sources, collect product mentions and validate the best new candidates.
+    Returns the updated progress (the input is not changed)."""
+    candidates = {k: _Candidate.from_dict(v) for k, v in progress["candidates"].items()}
+    checked = {
+        k: Competitor.model_validate(v) if v else None for k, v in progress["checked"].items()
+    }
+    seen_urls = set(progress["seen_urls"])
+    sources = _gather_sources(queries, seen_urls)
+    _add_mentions(market, sources, candidates)
+    ranked = _ranked(candidates)
+    _validate(market, [c for c in ranked if c.key not in checked][:CANDIDATES_TO_VALIDATE], checked)
+    return {
+        "rounds": progress["rounds"] + 1,
+        "queries": progress["queries"] + list(queries),
+        "seen_urls": sorted(seen_urls),
+        "candidates": {k: c.to_dict() for k, c in candidates.items()},
+        "checked": {k: v.model_dump(mode="json") if v else None for k, v in checked.items()},
+    }
+
+
+def validated(progress: dict) -> list[Competitor]:
+    """Candidates whose homepage passed validation, most mentioned first."""
+    candidates = {k: _Candidate.from_dict(v) for k, v in progress["candidates"].items()}
+    checked = progress["checked"]
+    ranked = _ranked(candidates)
+    return [Competitor.model_validate(checked[c.key]) for c in ranked if checked.get(c.key)]
+
+
+def finish(market: str, progress: dict, k: int) -> list[Competitor]:
+    return _apply_overrides(market, validated(progress)[:k])
+
+
+def _ranked(candidates: dict[str, _Candidate]) -> list[_Candidate]:
+    return sorted(candidates.values(), key=lambda c: (-len(c.sources), c.first_seen))
 
 
 def name_key(name: str) -> str:

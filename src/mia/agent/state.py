@@ -28,6 +28,7 @@ class ResearchState(TypedDict, total=False):
     offline: bool
     started_at: float  # epoch seconds, so the runtime survives a resume
     competitors: list[Competitor]
+    discovery: dict  # the Discovery Scout's progress between rounds (plain data)
     discovery_round: int
     documents: Annotated[list[Document], operator.add]  # appended by parallel scouts
     pricing: Annotated[list[PricingTier], operator.add]
