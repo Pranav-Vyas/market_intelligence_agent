@@ -276,6 +276,14 @@ def _method(report: MarketReport) -> list[str]:
             "quotes passed"
             + (f" ({v['quote_pass_rate']:.0%})" if v.get("quote_pass_rate") is not None else "")
         )
+    agent = stats.get("agent")
+    if agent:
+        out.append(
+            f"- Agents: {agent.get('discovery_rounds', 0)} discovery rounds, "
+            f"{max(agent.get('verify_rounds', 1) - 1, 0)} rounds of follow-up research"
+        )
+        researched = agent.get("researched", [])
+        out += [f"  - {line.removeprefix('after research: ')}" for line in researched]
     out += [
         f"- LLM: {llm.get('requests', 0)} requests, {llm.get('cache_hits', 0)} cache hits, "
         f"{llm.get('input_tokens', 0)} input / {llm.get('output_tokens', 0)} output tokens",

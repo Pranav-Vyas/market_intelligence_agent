@@ -7,9 +7,9 @@ features, pricing, complaint clusters and ranked market gaps. Full plan: `SPEC.m
 ## Commands
 ```bash
 uv sync                                   # install (no PyTorch: retrieval models run on fastembed)
-uv run mia run "AI meeting assistants"    # full pipeline → data/runs/<market>/<time>/report.md
+uv run mia run "AI meeting assistants"    # multi-agent graph → data/runs/<market>/<time>/report.md
 uv run mia run "..." --offline            # cached pages and LLM responses only
-uv run mia run "..." --graph              # the LangGraph version (checkpointed)
+uv run mia run "..." --linear             # the linear pipeline (baseline, no agents)
 uv run mia run --resume <run-id>          # continue a stopped graph run
 uv run mia models                         # Gemini model IDs your key can use
 uv run mia index "AI meeting assistants"  # collect and index only → data/indexes/<market>/

@@ -30,18 +30,22 @@ def run(
     offline: bool = typer.Option(
         False, "--offline", help="Use only cached pages and LLM responses (no network)."
     ),
-    graph: bool = typer.Option(
-        False, "--graph", help="Run the multi-agent graph (checkpointed, resumable)."
+    linear: bool = typer.Option(
+        False, "--linear", help="Run the linear pipeline (the baseline) instead of the agents."
     ),
     resume: str | None = typer.Option(
         None, "--resume", help="Continue a stopped graph run, given its run id."
     ),
 ) -> None:
-    """Run the full pipeline and write report.md + run.json."""
+    """Research a market with the multi-agent graph and write report.md, run.json and
+    trace.jsonl. Graph runs are checkpointed: continue a stopped one with --resume."""
     if not (market or resume):
         typer.echo("Give a market, or --resume <run-id>.", err=True)
         raise typer.Exit(2)
-    if graph or resume:
+    if resume and linear:
+        typer.echo("--resume continues a graph run; it can't be combined with --linear.", err=True)
+        raise typer.Exit(2)
+    if not linear:
         from mia.agent import graph as research_graph
 
         try:

@@ -6,7 +6,7 @@ comparison, a pricing comparison, complaint clusters, and ranked market gaps bac
 quotes.
 
 > Work in progress. The full plan is in [SPEC.md](SPEC.md). Every pipeline step runs on real data
-> now; the multi-agent graph (`mia run --graph`) is being built.
+> now, and `mia run` runs it as a multi-agent graph (`--linear` for the plain pipeline).
 
 ## Quick start
 ```bash
