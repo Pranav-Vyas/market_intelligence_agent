@@ -17,3 +17,10 @@ clause below is a complaint's normalized summary.
 Other thresholds (same summaries): 0.25 leaves 76 complaints alone and only 7 clusters reach 5
 complaints; 0.35 merges distinct problems into clusters of 26–29. Try complete linkage or a
 smaller threshold for the largest clusters when tuning (task B13).
+
+## Day 7 (task B13)
+
+The complete linkage idea above is ruled out: it scores below average linkage at every useful
+threshold (`clustering_tuning.md`). Embeddings group by shared words, so no threshold fixes the
+broad cluster. One LLM call now regroups the clusters instead. In run `20261105-020724` the largest
+pain point has 18 complaints, against 29 before, and reads as one problem.

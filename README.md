@@ -39,7 +39,7 @@ uv run mia stats                                 # documents per competitor and 
 ### Browse a run in the browser
 ```bash
 uv sync --extra ui                         # Streamlit and Plotly (not needed for the CLI)
-uv run streamlit run app/streamlit_app.py  # competitors, features, pricing, gaps, agent trace
+uv run streamlit run app/streamlit_app.py  # competitors, features, pricing, gaps, evidence search, agent trace
 ```
 
 ## Development

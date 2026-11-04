@@ -8,6 +8,10 @@
 | `results/retrieval.{json,md}` | Latest retrieval numbers, per method and per query |
 | `tune_retrieval.py`, `results/retrieval_tuning.{json,md}` | Chunk size, RRF candidates and rerank depth, one at a time (task C13) |
 | `results/pipeline_runs.json` | Full-run statistics: documents, complaints, LLM requests, runtime |
+| `gold/complaint_themes_*.json` | Each complaint summary's theme, and which themes are failures (task B13) |
+| `tune_clustering.py`, `results/clustering_tuning.{json,md}` | Linkage, thresholds and regrouping against those themes; ranking under other weights and gates (task B13) |
+| `results/top5_check.md` | Hand check of the top pain points (task B13) |
+| `compare_runs.py`, `results/graph_vs_linear.{json,md}` | Graph vs linear, and cost per fresh and cached run (task A15) |
 
 ## Retrieval
 
@@ -60,3 +64,41 @@ tuned and tested on the same set. The same chunks also feed complaint extraction
 verification, so changing them would re-extract every complaint (about 20 requests) and
 invalidate the shared snapshot. Revisit when the snapshot is next refreshed (task B16), and
 re-label first if the corpus has changed.
+
+## Clustering and scoring tuning (task B13)
+
+```bash
+uv run python eval/tune_clustering.py <run.json>    # → results/clustering_tuning.{json,md}
+```
+
+**The themes are AI-drafted** from the summaries alone, so spot-check them before quoting F1.
+Complaints whose summary has no theme are left out, so a run on a new corpus covers few of them.
+
+- **Linkage:** average beats complete at every useful threshold. Both top out near 0.45 B-cubed F1.
+- **Regrouping:** one LLM call on the seeds gives 0.49 on the snapshot run's complaints (0.44
+  without it) and 0.52–0.59 on the Day 6 complaints across prompt variations (0.46 without it).
+  Precision gains most. Medium thinking was no better than low.
+- **Failure or need:** agrees with the themes on about 90% of complaints in the snapshot run, and
+  79–94% across prompt variations.
+- **Weights:** the same three gaps rank under every variant tried; only their order changes.
+- **Gates:** these decide more than the weights do. Dropping the two-source gate ranks forced login
+  and forced calendar access, which is a decision for the team (`results/top5_check.md`).
+
+## Graph vs linear and costs (task A15)
+
+```bash
+uv run python eval/compare_runs.py <graph run.json> <linear run.json> --fresh <run.json> --replay <run.json>
+```
+
+On the same cached pages and reviews, the graph costs about twice the LLM calls of the linear
+pipeline and finds the same complaints. Its gain is 5 more official pages, which changed one
+coverage judgment. Follow-up research found no new documents on this corpus, though in the fresh
+run it lifted one weak signal to a ranked gap. Treat that as one run, not a measured advantage.
+
+A fresh run makes about 103 LLM calls (92 requests, the rest repeats answered by the cache) in
+11 minutes, against about 164 calls before tuning, on a newly collected corpus each time. It stays
+well inside the cap of 200. Scout decisions now stop when searches run dry, research skips
+competitors with nothing left, and product failures skip the coverage call.
+
+gemini-3.8-flash answered none of these requests (503 high demand, then its daily quota), so every
+smart call fell back to flash-lite. The results therefore show what flash-lite does.

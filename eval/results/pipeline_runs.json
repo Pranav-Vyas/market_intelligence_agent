@@ -133,10 +133,10 @@
       "discovery_rounds": 1,
       "verify_rounds": 3,
       "researched": [
-        "after research: 'Audio upload failure and data loss' weak 6.6 \u2192 'Audio upload failure and data loss' weak 7.2 (+2 complaints), CHANGED",
-        "after research: 'Unexpected charges and difficult cancellation' weak 6.1 \u2192 'Unauthorized charges and difficult cancellation' weak 6.9 (+3 complaints), CHANGED",
-        "after research: 'Audio upload failure and data loss' weak 7.2 \u2192 'Fails to record and crashes' ranked+verified 9.3 (+37 complaints), CHANGED",
-        "after research: 'Unauthorized charges and difficult cancellation' weak 6.9 \u2192 'Unexpected double charges and billing errors' weak 5.7 (+0 complaints), CHANGED"
+        "after research: 'Audio upload failure and data loss' weak 6.6 → 'Audio upload failure and data loss' weak 7.2 (+2 complaints), CHANGED",
+        "after research: 'Unexpected charges and difficult cancellation' weak 6.1 → 'Unauthorized charges and difficult cancellation' weak 6.9 (+3 complaints), CHANGED",
+        "after research: 'Audio upload failure and data loss' weak 7.2 → 'Fails to record and crashes' ranked+verified 9.3 (+37 complaints), CHANGED",
+        "after research: 'Unauthorized charges and difficult cancellation' weak 6.9 → 'Unexpected double charges and billing errors' weak 5.7 (+0 complaints), CHANGED"
       ]
     },
     "llm": {
@@ -169,10 +169,10 @@
       "discovery_rounds": 1,
       "verify_rounds": 3,
       "researched": [
-        "after research: 'Audio upload failure and data loss' weak 6.6 \u2192 'Audio upload failure and data loss' weak 7.2 (+1 complaints), CHANGED",
-        "after research: 'Unexpected charges and difficult cancellation' weak 6.1 \u2192 'Unauthorized charges after subscription cancellation' weak 7.2 (+3 complaints), CHANGED",
-        "after research: 'Unauthorized charges after subscription cancellation' weak 7.2 \u2192 'Unauthorized charges after subscription cancellation' weak 7.3 (+1 complaints), CHANGED",
-        "after research: 'Audio upload failure and data loss' weak 7.2 \u2192 'Audio upload failures and data loss' weak 7.2 (+0 complaints), unchanged"
+        "after research: 'Audio upload failure and data loss' weak 6.6 → 'Audio upload failure and data loss' weak 7.2 (+1 complaints), CHANGED",
+        "after research: 'Unexpected charges and difficult cancellation' weak 6.1 → 'Unauthorized charges after subscription cancellation' weak 7.2 (+3 complaints), CHANGED",
+        "after research: 'Unauthorized charges after subscription cancellation' weak 7.2 → 'Unauthorized charges after subscription cancellation' weak 7.3 (+1 complaints), CHANGED",
+        "after research: 'Audio upload failure and data loss' weak 7.2 → 'Audio upload failures and data loss' weak 7.2 (+0 complaints), unchanged"
       ]
     },
     "llm": {
@@ -190,5 +190,143 @@
       "report_identical": true
     },
     "notes": "gemini-3.8-flash's free tier allows 20 requests a day; it was used up, so scout decisions fell back to flash-lite (28 fallbacks)."
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-11-05",
+    "task": "Day 7: graph on the Day 6 cached corpus after tuning; the snapshot is made from this run",
+    "engine": "graph",
+    "run_id": "ai-meeting-assistants-20261105-020724",
+    "competitors": [
+      "Otter",
+      "Fathom",
+      "Fireflies",
+      "Avoma",
+      "tl;dv",
+      "Krisp",
+      "Granola",
+      "Read.ai"
+    ],
+    "documents_by_source": {
+      "official": 40,
+      "pricing": 7,
+      "hn": 172,
+      "app_store": 150
+    },
+    "complaint_documents_by_company": {
+      "Otter": 79,
+      "Fathom": 3,
+      "Fireflies": 62,
+      "Avoma": 7,
+      "tl;dv": 12,
+      "Krisp": 53,
+      "Granola": 80,
+      "Read.ai": 26
+    },
+    "complaints": 229,
+    "clusters": 19,
+    "ranked_market_gaps": 3,
+    "product_failures": 6,
+    "weak_signals": 10,
+    "verification": {
+      "opportunities": 9,
+      "opportunities_verified": 9,
+      "verification_rate": 1.0,
+      "quotes_checked": 61,
+      "quotes_passed": 55,
+      "quote_pass_rate": 0.902
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 2,
+      "researched": [
+        "after research: 'Recording meetings without consent' weak 7.2 → 'Recording meetings without consent' weak 7.2 (+0 complaints), unchanged",
+        "after research: 'Forced google or microsoft login' weak 6.6 → 'Forced google or microsoft login' weak 6.6 (+0 complaints), unchanged"
+      ]
+    },
+    "llm": {
+      "requests": 15,
+      "cache_hits": 77,
+      "input_tokens": 4600,
+      "output_tokens": 613,
+      "fallbacks": 17,
+      "requests_by_model": {
+        "gemini/gemini-3.5-flash-lite": 15
+      },
+      "requests_by_phase": {
+        "collection": 15
+      }
+    },
+    "runtime_s": 102.81,
+    "notes": "Only analysis and scout decisions were requested again; pages and reviews came from the cache. gemini-3.8-flash answered no request (503 high demand, then 429 daily quota), so its calls fell back to flash-lite. Research found no new documents on this corpus."
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-11-05",
+    "task": "Day 7: graph from an empty cache after tuning",
+    "engine": "graph",
+    "run_id": "ai-meeting-assistants-20261105-020944",
+    "competitors": [
+      "Fireflies",
+      "Otter",
+      "tl;dv",
+      "Fathom",
+      "Avoma",
+      "Granola",
+      "Krisp",
+      "Transkriptor"
+    ],
+    "documents_by_source": {
+      "official": 38,
+      "pricing": 7,
+      "hn": 158,
+      "app_store": 180
+    },
+    "complaint_documents_by_company": {
+      "Fireflies": 62,
+      "Otter": 80,
+      "tl;dv": 12,
+      "Fathom": 4,
+      "Avoma": 7,
+      "Granola": 80,
+      "Krisp": 53,
+      "Transkriptor": 40
+    },
+    "complaints": 269,
+    "clusters": 20,
+    "ranked_market_gaps": 8,
+    "product_failures": 9,
+    "weak_signals": 3,
+    "verification": {
+      "opportunities": 17,
+      "opportunities_verified": 17,
+      "verification_rate": 1.0,
+      "quotes_checked": 113,
+      "quotes_passed": 91,
+      "quote_pass_rate": 0.805
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 2,
+      "researched": [
+        "after research: 'Forced login or account creation' weak 5.7 → 'Mandatory account sign in and calendar access' weak 5.6 (+0 complaints), CHANGED",
+        "after research: 'Missing export and editing features' weak 4.5 → 'Unable to export or save transcripts' ranked+verified 5.2 (+3 complaints), CHANGED"
+      ]
+    },
+    "llm": {
+      "requests": 92,
+      "cache_hits": 11,
+      "input_tokens": 284061,
+      "output_tokens": 48060,
+      "fallbacks": 28,
+      "requests_by_model": {
+        "gemini/gemini-3.5-flash-lite": 92
+      },
+      "requests_by_phase": {
+        "collection": 36
+      }
+    },
+    "runtime_s": 682.86,
+    "notes": "Pages and reviews were collected live, so the corpus differs: discovery found Transkriptor instead of Read.ai. Research lifted one weak signal to a ranked, verified gap (+3 complaints). gemini-3.8-flash answered no request."
   }
 ]
