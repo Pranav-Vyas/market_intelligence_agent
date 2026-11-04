@@ -204,9 +204,10 @@ The LLM never invents a gap. Gaps can only come from clusters of complaints that
 ```
 complaint-type chunks
   → extract (bulk model, batched): {summary, VERBATIM quote, severity 1–3, company}
-  → embed summaries → agglomerative clustering (cosine threshold) → LLM names each cluster
-  → stats: share, distinct docs, source types, mean severity, companies affected
-  → coverage: for each competitor, does its OFFICIAL site address this? (yes / partial / no + quote)
+  → embed summaries → agglomerative clustering (cosine threshold)
+  → one LLM call regroups the clusters into pain points, names them, marks each failure or need
+  → stats: share, source-balanced share, distinct docs, source types, mean severity, companies
+  → coverage (needs only): for each competitor, does its OFFICIAL site address this? (yes / partial / no + quote)
   → score → evidence gates → verify quotes → rank
 ```
 
@@ -220,7 +221,7 @@ complaint-type chunks
 
 **Opportunity score (0–10).** The components are shown in the report and the weights can be tuned in `config.py`.
 ```
-F = cluster.share / max_share                               # relative frequency
+F = balanced_share / max_balanced_share    # relative frequency, within the cluster's category
 S = (mean_severity - 1) / 2                                 # severity, 0..1
 G = 1 - coverage          # coverage = (yes + 0.5·partial) / n_competitors
 E = min(1, distinct_docs/10) · (0.5 + 0.5·min(1, n_source_types/3))   # evidence strength
@@ -228,10 +229,15 @@ score = 10 · (0.35·F + 0.25·S + 0.25·G + 0.15·E)
 kind  = "unmet_need" if coverage < 0.4 else "poor_execution"  # vendors claim it, users still complain
 ```
 
+`balanced_share` is the cluster's share of each source's complaints, averaged over the sources, so the source with the most reviews doesn't decide what counts as common. The report still shows the plain share.
+
+**Product failures are not market gaps.** Crashes, lost recordings, wrong charges and unresponsive support are things that should already work. No vendor advertises "we don't crash", so "no competitor claims to solve it" says nothing about them and used to give them full gap points. A pain point the LLM marks as a failure skips the coverage call, uses the share of competitors whose customers report it as G, gets the kind `product_failure`, and appears in its own report section after the gaps.
+
 **Evidence gates.** An opportunity is ranked only if it has:
 - at least 5 complaints,
 - from at least 3 distinct documents,
-- across at least 2 source types.
+- about at least 2 companies (one vendor's problem is its own, not a market gap),
+- across at least 2 source types (market gaps only: most failures surface in app reviews).
 
 At most 3 complaints are counted per document, so one viral thread can't dominate. Anything that fails a gate goes under "Weak signals" instead of being ranked.
 

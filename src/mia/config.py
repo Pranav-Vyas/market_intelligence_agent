@@ -72,7 +72,8 @@ class Settings:
     cluster_distance: float = 0.3  # cosine distance under which summaries merge (B9)
     gate_min_complaints: int = 5
     gate_min_docs: int = 3
-    gate_min_source_types: int = 2
+    gate_min_source_types: int = 2  # not asked of product failures: most surface in app reviews
+    gate_min_companies: int = 2  # one vendor's problem is its own, not a market gap
     unmet_need_coverage_below: float = 0.4
     score_weights: dict[str, float] = field(
         default_factory=lambda: {"F": 0.35, "S": 0.25, "G": 0.25, "E": 0.15}

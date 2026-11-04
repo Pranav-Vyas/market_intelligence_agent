@@ -41,8 +41,9 @@ the final groups:
 - Two complaints belong together only if the same change would fix both. Move, split and merge
   freely, and add ungrouped complaints to a group they fit.
 - Leave out complaints that fit nowhere. Never make a catch-all group such as "other issues".
-- "label": 3 to 8 lowercase words naming the problem, for example "inaccurate transcription with
-  accents" or "hard to cancel subscription". No product names.
+- "label": 3 to 8 lowercase words naming the problem shared by every complaint in the group, for
+  example "inaccurate transcription with accents" or "hard to cancel subscription". No product
+  names.
 - "category": "failure" if something the product should already do breaks or a vendor mishandles
   a customer: crashes, lost recordings, failed uploads, login errors, wrong charges, charges after
   cancelling, slow software, unresponsive support. Vendors never advertise against these.

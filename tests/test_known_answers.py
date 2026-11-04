@@ -101,7 +101,11 @@ def test_only_the_gate_passing_theme_is_ranked(clusters):
 
 
 def test_ranking_follows_the_score_when_several_pass(clusters, settings):
-    runtime.configure(settings=replace(runtime.settings(), gate_min_docs=2, gate_min_complaints=4))
+    runtime.configure(
+        settings=replace(
+            runtime.settings(), gate_min_docs=2, gate_min_complaints=4, gate_min_companies=1
+        )
+    )
     ranked, weak = score_opportunities(list(clusters.values()), {}, len(COMPETITORS))
     scores = [o.score for o in ranked]
     assert scores == sorted(scores, reverse=True)
