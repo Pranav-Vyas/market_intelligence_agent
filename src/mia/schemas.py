@@ -110,13 +110,17 @@ class ComplaintCluster(BaseModel):
     source_types: list[SourceType]
     mean_severity: float
     companies: list[str]
+    # "failure": something that should work breaks, so vendors never advertise against it.
+    # "need": a capability, limit, price or policy that vendors can choose to offer.
+    category: Literal["failure", "need"] = "need"
+    balanced_share: float | None = None  # share averaged per source type, so no source dominates
 
 
 class Opportunity(BaseModel):
     title: str
     cluster_id: str
-    kind: Literal["unmet_need", "poor_execution"]
-    coverage: float  # 0..1, share of competitors that address it well
+    kind: Literal["unmet_need", "poor_execution", "product_failure"]
+    coverage: float  # 0..1, share of competitors that address it well (not checked for failures)
     score: float  # 0..10
     score_breakdown: dict[str, float]
     rationale: str
