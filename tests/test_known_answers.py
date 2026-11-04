@@ -34,10 +34,11 @@ def use(settings, llm, backend):
         import re
 
         out = []
-        for cid, first in re.findall(r'<cluster id="(\d+)">\n- ([^\n]+)', req.prompt):
-            theme = next(r["theme"] for r in ROWS if r["summary"] == first)
-            out.append({"cluster_id": int(cid), "label": theme})
-        return json.dumps({"names": out})
+        for block in re.findall(r'<group id="\d+">\n(.*?)\n</group>', req.prompt, re.S):
+            items = re.findall(r"^(\d+)\. (.+)$", block, re.M)
+            theme = next(r["theme"] for r in ROWS if r["summary"] == items[0][1])
+            out.append({"label": theme, "category": "need", "items": [int(i) for i, _ in items]})
+        return json.dumps({"groups": out})
 
     backend.responder = names
     runtime.configure(settings=replace(settings, cluster_distance=0.6), llm_client=llm)

@@ -38,9 +38,13 @@ def _fake_llm_reply(req) -> str:
         return json.dumps({"judgments": []})
     if req.schema is not None and req.schema.__name__ == "_Pricing":
         return json.dumps({"tiers": [{"name": "Pro", "bucket": "pro", "monthly_usd": 9}]})
-    if req.schema is not None and req.schema.__name__ == "_Names":
-        clusters = re.findall(r'<cluster id="(\d+)">\n- ([^\n]+)', req.prompt)
-        return json.dumps({"names": [{"cluster_id": int(i), "label": s} for i, s in clusters]})
+    if req.schema is not None and req.schema.__name__ == "_Groups":
+        groups = []
+        for block in re.findall(r'<group id="\d+">\n(.*?)\n</group>', req.prompt, re.S):
+            items = re.findall(r"^(\d+)\. (.+)$", block, re.M)
+            label, numbers = items[0][1], [int(i) for i, _ in items]
+            groups.append({"label": label, "category": "need", "items": numbers})
+        return json.dumps({"groups": groups})
     if req.schema is not None and req.schema.__name__ == "_Coverage":
         return json.dumps({"judgments": []})
     if req.schema is not None and req.schema.__name__ == "_Verdicts":
