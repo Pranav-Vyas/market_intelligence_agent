@@ -137,6 +137,14 @@ def test_only_product_failures_means_no_market_gap():
     assert "### 1. App crashes" in md
 
 
+def test_coverage_shows_half_competitors_despite_the_stored_rounding():
+    report = _report()
+    gap = report.opportunities[0].model_copy(update={"coverage": 0.062})
+    competitors = [report.competitors[0].model_copy(update={"name": f"Co{i}"}) for i in range(8)]
+    md = render(report.model_copy(update={"opportunities": [gap], "competitors": competitors}))
+    assert "- **Coverage:** 0.5/8 competitors claim to address it." in md
+
+
 def test_render_states_source_skew_and_thin_evidence():
     md = render(_report())
     assert "**Source skew:** 100% of complaints come from" in md

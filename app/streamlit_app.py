@@ -350,7 +350,8 @@ def opportunity_cards(items: list[dict]) -> None:
         if kind == "product_failure":
             spread = f"🏢 reported for {len(cl.get('companies', []))}/{n_comp} competitors"
         else:
-            spread = f"🏢 {opp['coverage'] * n_comp:g}/{n_comp} competitors claim it"
+            claims = round(opp["coverage"] * n_comp * 2) / 2  # coverage is stored rounded
+            spread = f"🏢 {claims:g}/{n_comp} competitors claim it"
         st.markdown(
             f"""<div class="opp-card">
 <div class="opp-title">{i}. {esc(opp["title"])}</div>

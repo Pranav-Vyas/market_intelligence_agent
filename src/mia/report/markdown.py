@@ -276,7 +276,8 @@ def _opportunity(
         lines.append(f"- **Spread:** {o.rationale}")
     else:
         lines.append(
-            f"- **Coverage:** {o.coverage * n_comp:g}/{n_comp} competitors claim to address it. "
+            f"- **Coverage:** {round(o.coverage * n_comp * 2) / 2:g}/{n_comp} competitors claim to "
+            "address it. "
             f"{o.rationale}"
         )
     lines.append(f"- **Score:** {o.score:.1f} / 10 ({breakdown})")
