@@ -170,3 +170,53 @@ def test_a_second_research_round_is_told_what_was_tried_before(setup):
     assert [s["action"] for s in steps[:2]] == ["invalid", "search"]
     assert world.calls == [("hn", "billing error")]
     assert steps[1]["query"] == "billing error" and steps[1]["focus"] == "hard to cancel"
+
+
+def test_two_empty_searches_in_a_row_stop_the_scout(setup):
+    world = World({"hn": 3}, per_query=0)
+    backend = setup(
+        world,
+        _actions(
+            {"action": "search", "source": "hn", "query": "bug"},
+            {"action": "search", "source": "hn", "query": "crash"},
+            {"action": "search", "source": "hn", "query": "never reached"},
+        ),
+    )
+    docs, steps = scout(ACME, MARKET)
+    assert len(docs) == 3
+    assert len(backend.calls) == 2
+    assert steps[-1]["action"] == "stop"
+    assert "2 searches in a row found nothing new" in steps[-1]["result_summary"]
+
+
+def test_a_search_that_finds_something_resets_the_empty_count(setup, monkeypatch):
+    world = World({"hn": 3})
+    found = {"bug": 0, "crash": 2, "slow": 0, "price": 0}
+
+    def collect(c, market, source, query=None, limit=40):
+        return _docs(source, query or "default", found[query] if query else 3)
+
+    world.collect = collect
+    backend = setup(
+        world,
+        _actions(*({"action": "search", "source": "hn", "query": q} for q in found)),
+    )
+    docs, steps = scout(ACME, MARKET)
+    assert len(backend.calls) == 4  # bug (0), crash (2), slow (0), price (0): stops only at the end
+    assert "searches in a row" in steps[-1]["result_summary"]
+    assert len(docs) == 8  # 3 default from each source, 2 from "crash"
+
+
+def test_a_targeted_search_is_not_stopped_by_the_empty_count(setup):
+    world = World({}, per_query=0)
+    backend = setup(
+        world,
+        _actions(
+            {"action": "search", "source": "hn", "query": "bug"},
+            {"action": "search", "source": "hn", "query": "crash"},
+        ),
+        focus_scout_steps=2,
+    )
+    _, steps = scout(ACME, MARKET, focus="crashes")
+    assert len(backend.calls) == 2
+    assert steps[-1]["result_summary"].startswith("targeted research on 'crashes'")
