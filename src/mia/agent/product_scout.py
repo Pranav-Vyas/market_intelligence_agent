@@ -71,7 +71,7 @@ def choose_pages(c: Competitor, links: list[tuple[str, str]]) -> Picked | None:
         f"pages.\n\n{numbered}"
     )
     try:
-        result = runtime.llm().extract(prompt, schema=PagePicks, system=SYSTEM, model="smart")
+        result = runtime.llm().extract(prompt, schema=PagePicks, system=SYSTEM, model="bulk")
     except RECOVERABLE:
         return None
     valid = [p for p in result.pages if 0 <= p.link_id < len(links)]

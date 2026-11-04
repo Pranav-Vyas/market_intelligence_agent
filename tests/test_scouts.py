@@ -44,7 +44,7 @@ def test_product_scout_picks_pricing_and_other_pages(use):
     assert pricing == "https://acme.example.com/plans"
     assert others == ["https://acme.example.com/features", "https://acme.example.com/security"]
     assert "[2] https://acme.example.com/customers — Customer stories" in backend.calls[0]["prompt"]
-    assert backend.calls[0]["model"] == "smart-model"
+    assert backend.calls[0]["model"] == "bulk-model"
 
 
 def test_product_scout_respects_the_page_cap(use):

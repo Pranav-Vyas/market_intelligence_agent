@@ -115,8 +115,8 @@ We don't use LiteLLM. Two of its PyPI releases were hijacked in March 2026 to st
 
 | Job | Setting (`.env`) | Free default |
 |---|---|---|
-| Bulk extraction (complaints, pricing, feature cells), LLM judges, cluster names | `MIA_MODEL_BULK` | Gemini **Flash-Lite** (the largest free daily quota) |
-| Scout decisions, feature taxonomy, final synthesis | `MIA_MODEL_SMART` | Gemini **Flash** |
+| Bulk extraction (complaints, pricing, feature cells), LLM judges, cluster names, the Customer and Product Scouts' routine choices | `MIA_MODEL_BULK` | Gemini **Flash-Lite** (the largest free daily quota) |
+| Feature taxonomy, the Discovery Scout's extra queries | `MIA_MODEL_SMART` | Gemini **Flash** (about 20 requests a day on the free tier, so only the few calls that shape the results use it) |
 
 - **Keys:** each person creates their own free key in Google AI Studio and puts it in `.env` as `GEMINI_API_KEY`. That gives three separate quotas, with no billing setup.
 - **The limit is quota, not money.**

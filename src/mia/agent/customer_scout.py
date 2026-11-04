@@ -99,7 +99,7 @@ def scout(
                     _prompt(c, market, focus, tried, max_steps - len(steps), _count(docs, known)),
                     schema=NextAction,
                     system=SYSTEM,
-                    model="smart",
+                    model="bulk",
                 )
             except RECOVERABLE as err:
                 steps.append(_step(c, "stop", f"no decision possible ({err})", before))
