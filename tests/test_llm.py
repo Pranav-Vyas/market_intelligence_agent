@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from mia.llm import (
     LLM,
+    MAX_ATTEMPTS,
     LLMBudgetExceeded,
     LLMCacheMiss,
     LLMConfigError,
@@ -113,7 +114,7 @@ def test_unavailable_smart_model_falls_back_to_bulk(settings):
     backend = _overloaded_smart_model()
     llm = LLM(settings, backends={"fake": backend}, sleep=lambda s: None)
     assert llm.extract("x", schema=Item, model="smart") == Item(name="pricing", severity=2)
-    assert [c["model"] for c in backend.calls] == ["smart-model"] * 5 + ["bulk-model"]
+    assert [c["model"] for c in backend.calls] == ["smart-model"] * MAX_ATTEMPTS + ["bulk-model"]
     assert llm.usage.fallbacks == 1
     assert llm.usage.as_dict()["fallbacks"] == 1
 
@@ -126,7 +127,7 @@ def test_offline_falls_back_to_the_cached_bulk_answer(settings):
 
 
 def test_unavailable_bulk_model_is_not_hidden(settings):
-    backend = FakeBackend([TransientError()] * 5)
+    backend = FakeBackend([TransientError()] * MAX_ATTEMPTS)
     llm = LLM(settings, backends={"fake": backend}, sleep=lambda s: None)
     with pytest.raises(LLMUnavailable):
         llm.complete("x", model="bulk")
