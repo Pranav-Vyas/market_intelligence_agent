@@ -1,0 +1,499 @@
+{
+  "run": "20261020-014638",
+  "complaints": 243,
+  "rows": [
+    {
+      "method": "average",
+      "threshold": 0.2,
+      "precision": 0.927,
+      "recall": 0.185,
+      "f1": 0.308,
+      "clusters_of_5_or_more": 5,
+      "complaints_in_them": 34,
+      "purity_of_them": 0.903,
+      "largest": 10
+    },
+    {
+      "method": "average",
+      "threshold": 0.25,
+      "precision": 0.814,
+      "recall": 0.242,
+      "f1": 0.373,
+      "clusters_of_5_or_more": 8,
+      "complaints_in_them": 67,
+      "purity_of_them": 0.754,
+      "largest": 17
+    },
+    {
+      "method": "average",
+      "threshold": 0.3,
+      "precision": 0.703,
+      "recall": 0.343,
+      "f1": 0.461,
+      "clusters_of_5_or_more": 13,
+      "complaints_in_them": 123,
+      "purity_of_them": 0.755,
+      "largest": 22
+    },
+    {
+      "method": "average",
+      "threshold": 0.35,
+      "precision": 0.533,
+      "recall": 0.406,
+      "f1": 0.461,
+      "clusters_of_5_or_more": 18,
+      "complaints_in_them": 186,
+      "purity_of_them": 0.699,
+      "largest": 30
+    },
+    {
+      "method": "average",
+      "threshold": 0.4,
+      "precision": 0.323,
+      "recall": 0.566,
+      "f1": 0.411,
+      "clusters_of_5_or_more": 11,
+      "complaints_in_them": 226,
+      "purity_of_them": 0.468,
+      "largest": 70
+    },
+    {
+      "method": "average",
+      "threshold": 0.45,
+      "precision": 0.137,
+      "recall": 0.823,
+      "f1": 0.235,
+      "clusters_of_5_or_more": 3,
+      "complaints_in_them": 240,
+      "purity_of_them": 0.288,
+      "largest": 162
+    },
+    {
+      "method": "average",
+      "threshold": 0.5,
+      "precision": 0.065,
+      "recall": 0.985,
+      "f1": 0.121,
+      "clusters_of_5_or_more": 1,
+      "complaints_in_them": 241,
+      "purity_of_them": 0.12,
+      "largest": 241
+    },
+    {
+      "method": "complete",
+      "threshold": 0.2,
+      "precision": 0.942,
+      "recall": 0.158,
+      "f1": 0.271,
+      "clusters_of_5_or_more": 3,
+      "complaints_in_them": 18,
+      "purity_of_them": 1.0,
+      "largest": 8
+    },
+    {
+      "method": "complete",
+      "threshold": 0.25,
+      "precision": 0.851,
+      "recall": 0.19,
+      "f1": 0.31,
+      "clusters_of_5_or_more": 4,
+      "complaints_in_them": 28,
+      "purity_of_them": 0.929,
+      "largest": 10
+    },
+    {
+      "method": "complete",
+      "threshold": 0.3,
+      "precision": 0.768,
+      "recall": 0.222,
+      "f1": 0.345,
+      "clusters_of_5_or_more": 8,
+      "complaints_in_them": 54,
+      "purity_of_them": 0.74,
+      "largest": 10
+    },
+    {
+      "method": "complete",
+      "threshold": 0.35,
+      "precision": 0.69,
+      "recall": 0.277,
+      "f1": 0.395,
+      "clusters_of_5_or_more": 12,
+      "complaints_in_them": 90,
+      "purity_of_them": 0.713,
+      "largest": 17
+    },
+    {
+      "method": "complete",
+      "threshold": 0.4,
+      "precision": 0.573,
+      "recall": 0.321,
+      "f1": 0.412,
+      "clusters_of_5_or_more": 16,
+      "complaints_in_them": 144,
+      "purity_of_them": 0.607,
+      "largest": 24
+    },
+    {
+      "method": "complete",
+      "threshold": 0.45,
+      "precision": 0.451,
+      "recall": 0.371,
+      "f1": 0.407,
+      "clusters_of_5_or_more": 25,
+      "complaints_in_them": 221,
+      "purity_of_them": 0.594,
+      "largest": 27
+    },
+    {
+      "method": "complete",
+      "threshold": 0.5,
+      "precision": 0.352,
+      "recall": 0.424,
+      "f1": 0.385,
+      "clusters_of_5_or_more": 19,
+      "complaints_in_them": 239,
+      "purity_of_them": 0.502,
+      "largest": 32
+    },
+    {
+      "method": "average + LLM refinement",
+      "threshold": 0.3,
+      "precision": 0.808,
+      "recall": 0.525,
+      "f1": 0.636,
+      "clusters_of_5_or_more": 12,
+      "complaints_in_them": 148,
+      "purity_of_them": 0.819,
+      "largest": 33
+    }
+  ],
+  "category_agreement": 0.91,
+  "refined_clusters": [
+    {
+      "label": "meeting recording failures and data loss",
+      "category": "failure",
+      "size": 33,
+      "themes": [
+        [
+          "recording_failure",
+          21
+        ],
+        [
+          "upload_failure",
+          8
+        ],
+        [
+          "summary_quality",
+          1
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Granola",
+        "Krisp",
+        "Otter",
+        "Read.ai"
+      ],
+      "sources": [
+        "app_store"
+      ]
+    },
+    {
+      "label": "inaccurate transcription and summarization",
+      "category": "need",
+      "size": 24,
+      "themes": [
+        [
+          "accuracy",
+          21
+        ],
+        [
+          "summary_quality",
+          2
+        ],
+        [
+          "recording_failure",
+          1
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Granola",
+        "Krisp",
+        "Otter"
+      ],
+      "sources": [
+        "app_store",
+        "hn"
+      ]
+    },
+    {
+      "label": "required account login restrictions",
+      "category": "need",
+      "size": 14,
+      "themes": [
+        [
+          "forced_signin",
+          11
+        ],
+        [
+          "login_bug",
+          3
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Granola"
+      ],
+      "sources": [
+        "app_store"
+      ]
+    },
+    {
+      "label": "unwanted charges after cancellation",
+      "category": "failure",
+      "size": 13,
+      "themes": [
+        [
+          "billing",
+          13
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Otter"
+      ],
+      "sources": [
+        "app_store"
+      ]
+    },
+    {
+      "label": "security and privacy concerns",
+      "category": "need",
+      "size": 12,
+      "themes": [
+        [
+          "data_privacy",
+          8
+        ],
+        [
+          "security",
+          3
+        ],
+        [
+          "other",
+          1
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Granola",
+        "Otter",
+        "Read.ai",
+        "tl;dv"
+      ],
+      "sources": [
+        "app_store",
+        "hn"
+      ]
+    },
+    {
+      "label": "expensive subscription pricing",
+      "category": "need",
+      "size": 11,
+      "themes": [
+        [
+          "price",
+          6
+        ],
+        [
+          "usage_limits",
+          5
+        ]
+      ],
+      "companies": [
+        "Granola",
+        "Krisp",
+        "Otter",
+        "Read.ai"
+      ],
+      "sources": [
+        "app_store",
+        "hn"
+      ]
+    },
+    {
+      "label": "unresponsive customer support",
+      "category": "failure",
+      "size": 10,
+      "themes": [
+        [
+          "support",
+          9
+        ],
+        [
+          "security",
+          1
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Otter",
+        "tl;dv"
+      ],
+      "sources": [
+        "app_store",
+        "hn"
+      ]
+    },
+    {
+      "label": "app crashes and startup failures",
+      "category": "failure",
+      "size": 8,
+      "themes": [
+        [
+          "app_crash",
+          6
+        ],
+        [
+          "other",
+          1
+        ],
+        [
+          "performance",
+          1
+        ]
+      ],
+      "companies": [
+        "Fathom",
+        "Fireflies",
+        "Granola",
+        "Krisp",
+        "Read.ai"
+      ],
+      "sources": [
+        "app_store",
+        "hn"
+      ]
+    },
+    {
+      "label": "bot joins meetings uninvited",
+      "category": "need",
+      "size": 6,
+      "themes": [
+        [
+          "bot_behavior",
+          6
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Otter"
+      ],
+      "sources": [
+        "app_store",
+        "hn"
+      ]
+    },
+    {
+      "label": "recording meetings without consent",
+      "category": "need",
+      "size": 6,
+      "themes": [
+        [
+          "consent",
+          4
+        ],
+        [
+          "data_privacy",
+          2
+        ]
+      ],
+      "companies": [
+        "Otter"
+      ],
+      "sources": [
+        "app_store",
+        "hn"
+      ]
+    },
+    {
+      "label": "forced calendar access permission loops",
+      "category": "failure",
+      "size": 6,
+      "themes": [
+        [
+          "calendar_permission",
+          6
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Granola",
+        "Krisp",
+        "Read.ai"
+      ],
+      "sources": [
+        "app_store"
+      ]
+    },
+    {
+      "label": "unable to log in or sign in",
+      "category": "failure",
+      "size": 5,
+      "themes": [
+        [
+          "login_bug",
+          5
+        ]
+      ],
+      "companies": [
+        "Avoma",
+        "Fireflies",
+        "Granola",
+        "Read.ai"
+      ],
+      "sources": [
+        "app_store"
+      ]
+    },
+    {
+      "label": "missing export options and formatting loss",
+      "category": "need",
+      "size": 4,
+      "themes": [
+        [
+          "editing_export",
+          4
+        ]
+      ],
+      "companies": [
+        "Fireflies",
+        "Granola",
+        "Otter"
+      ],
+      "sources": [
+        "app_store"
+      ]
+    },
+    {
+      "label": "slow transcription and processing speed",
+      "category": "failure",
+      "size": 4,
+      "themes": [
+        [
+          "performance",
+          4
+        ]
+      ],
+      "companies": [
+        "Krisp",
+        "Otter"
+      ],
+      "sources": [
+        "app_store"
+      ]
+    }
+  ]
+}
