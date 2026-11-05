@@ -34,6 +34,7 @@ For each company, answer:
 - "partial": they address part of it, or only on some plans or platforms.
 - "no": the pages say it isn't offered.
 - "unknown": the pages don't address it. Not mentioning the problem is "unknown", never "no".
+A problem with price or usage limits is addressed by a free or low-cost plan or higher limits.
 
 For "yes", "partial" and "no", "source_id" is the source that says so and "quote" is copied
 EXACTLY from it: one sentence or clause, at most 30 words. For "unknown", leave "quote" empty.

@@ -1,13 +1,13 @@
 """Render a MarketReport as Markdown (task A11).
 
 Section order mirrors Topic.md (competitors, features, pricing, complaints, market gaps), with
-a short summary first and weak signals, sources and the method at the end. Every claim cites
-its source as [n], numbered in order of first use and listed under "Sources".
+a short summary first and product failures, weak signals, sources and the method at the end.
+Every claim cites its source as [n], numbered in order of first use and listed under "Sources".
 """
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from mia import runtime
 from mia.schemas import ComplaintCluster, FeatureCell, MarketReport, Opportunity, PricingTier
@@ -18,6 +18,8 @@ SOURCE_NAMES = {"app_store": "App Store", "hn": "Hacker News", "reddit": "Reddit
 MAX_EVIDENCE_SHOWN = 5
 MAX_WARNINGS_SHOWN = 10
 QUOTE_CHARS = 160
+SKEWED_SOURCE_SHARE = 0.6  # above this, the report says one source dominates
+THIN_COMPANY_COMPLAINTS = 10  # below this, the report says a competitor's evidence is thin
 
 
 class Citations:
@@ -46,6 +48,7 @@ def render(report: MarketReport) -> str:
     out += _pricing(report, cites)
     out += _complaints(report, cites)
     out += _gaps(report, cites)
+    out += _failures(report, cites)
     out += _weak_signals(report)
     out += ["## Sources", ""] + [f"[{num}] {url}  " for num, url in cites.items()] + [""]
     out += _method(report)
@@ -60,8 +63,9 @@ def _header(report: MarketReport) -> list[str]:
         f"# {report.market}: market report",
         "",
         f"Generated {report.generated_at:%Y-%m-%d %H:%M} UTC · {len(report.competitors)} "
-        f"competitors · {len(report.complaints)} complaints · {len(report.opportunities)} ranked "
-        "opportunities",
+        f"competitors · {len(report.complaints)} complaints · "
+        f"{_n(len(_market_gaps(report)), 'ranked market gap')} · "
+        f"{_n(len(_product_failures(report)), 'product failure')}",
         "",
     ]
     stubs = report.stats.get("stubs") or []
@@ -88,18 +92,51 @@ def _summary(report: MarketReport) -> list[str]:
             + "; ".join(f"{c.label} ({c.share:.0%})" for c in top)
             + "."
         )
-    if report.opportunities:
+    gaps = _market_gaps(report)
+    if gaps:
         out.append(
             "- **Top market gaps:** "
             + "; ".join(
-                f"{o.title} ({o.score:.1f}/10, {o.kind.replace('_', ' ')})"
-                for o in report.opportunities[:3]
+                f"{o.title} ({o.score:.1f}/10, {o.kind.replace('_', ' ')})" for o in gaps[:3]
             )
             + "."
         )
     else:
         out.append("- **Market gaps:** no pain point passed the evidence gates in this run.")
-    return out + [""]
+    failures = _product_failures(report)
+    if failures:
+        out.append(
+            "- **Most reported product failures:** "
+            + "; ".join(o.title for o in failures[:3])
+            + ". These are things that break, not openings for a new product."
+        )
+    return out + _evidence_limits(report) + [""]
+
+
+def _evidence_limits(report: MarketReport) -> list[str]:
+    """What the data can't support, stated next to the conclusions drawn from it."""
+    out = []
+    by_source = Counter(c.source_type for c in report.complaints)
+    if by_source:
+        source, count = by_source.most_common(1)[0]
+        if count / len(report.complaints) > SKEWED_SOURCE_SHARE:
+            out.append(
+                f"- **Source skew:** {count / len(report.complaints):.0%} of complaints come from "
+                f"{SOURCE_NAMES.get(source, source)}, so its users' problems are over-represented. "
+                "Frequency scores average over sources to offset this."
+            )
+    by_company = Counter(c.company for c in report.complaints)
+    thin = [
+        f"{c.name} ({by_company[c.name]})"
+        for c in report.competitors
+        if by_company[c.name] < THIN_COMPANY_COMPLAINTS
+    ]
+    if thin:
+        out.append(
+            f"- **Thin evidence:** few public complaints were found for {', '.join(thin)}, so the "
+            "gaps say little about them."
+        )
+    return out
 
 
 def _competitors(report: MarketReport) -> list[str]:
@@ -176,18 +213,47 @@ def _complaints(report: MarketReport, cites: Citations) -> list[str]:
 
 def _gaps(report: MarketReport, cites: Citations) -> list[str]:
     out = ["## Potential market gaps", ""]
-    if not report.opportunities:
+    gaps = _market_gaps(report)
+    if not gaps:
         return out + ["No pain point passed the evidence gates. See weak signals below.", ""]
     out += [
-        "Ranked by score (0–10): frequency F, severity S, competitor gap G and evidence "
-        "strength E. An *unmet need* is one few competitors claim to address; *poor "
-        "execution* means vendors claim it, yet customers still complain.",
+        "Things customers want that a product could offer, ranked by score (0–10): frequency F, "
+        "severity S, competitor gap G and evidence strength E. An *unmet need* is one few "
+        "competitors claim to address; *poor execution* means vendors claim it, yet customers "
+        "still complain.",
         "",
     ]
     clusters = {c.id: c for c in report.clusters}
-    for i, o in enumerate(report.opportunities, 1):
+    for i, o in enumerate(gaps, 1):
         out += _opportunity(i, o, clusters.get(o.cluster_id), report, cites)
     return out
+
+
+def _failures(report: MarketReport, cites: Citations) -> list[str]:
+    failures = _product_failures(report)
+    if not failures:
+        return []
+    out = [
+        "## Product failures",
+        "",
+        "Things that break for customers across several products: crashes, lost data, billing "
+        "and support problems. They are ranked apart from market gaps because they show where "
+        "today's products fall down, not what's missing from the market. Here G is the share of "
+        "competitors whose customers report the problem.",
+        "",
+    ]
+    clusters = {c.id: c for c in report.clusters}
+    for i, o in enumerate(failures, 1):
+        out += _opportunity(i, o, clusters.get(o.cluster_id), report, cites)
+    return out
+
+
+def _market_gaps(report: MarketReport) -> list[Opportunity]:
+    return [o for o in report.opportunities if o.kind != "product_failure"]
+
+
+def _product_failures(report: MarketReport) -> list[Opportunity]:
+    return [o for o in report.opportunities if o.kind == "product_failure"]
 
 
 def _opportunity(
@@ -197,17 +263,22 @@ def _opportunity(
     n_comp = len(report.competitors)
     breakdown = " · ".join(f"{k} {v:.2f}" for k, v in o.score_breakdown.items())
     lines = [f"### {n}. {o.title} ({o.score:.1f} / 10)", ""]
-    lines.append(f"- **Kind:** {o.kind.replace('_', ' ')}")
+    if o.kind != "product_failure":
+        lines.append(f"- **Kind:** {o.kind.replace('_', ' ')}")
     if cl is not None:
         counts = f"{_n(len(cl.complaint_ids), 'complaint')}, {_n(cl.distinct_docs, 'document')}"
         lines.append(
             f"- **Frequency:** {cl.share:.0%} of complaints ({counts}, {_sources(cl.source_types)})"
         )
         lines.append(f"- **Severity:** {cl.mean_severity:.1f} / 3")
-    lines.append(
-        f"- **Coverage:** {o.coverage * n_comp:g}/{n_comp} competitors claim to address it. "
-        f"{o.rationale}"
-    )
+        lines.append(f"- **Reported for:** {', '.join(cl.companies)}")
+    if o.kind == "product_failure":
+        lines.append(f"- **Spread:** {o.rationale}")
+    else:
+        lines.append(
+            f"- **Coverage:** {o.coverage * n_comp:g}/{n_comp} competitors claim to address it. "
+            f"{o.rationale}"
+        )
     lines.append(f"- **Score:** {o.score:.1f} / 10 ({breakdown})")
     quotes = [by_id[e] for e in o.evidence if e in by_id][:MAX_EVIDENCE_SHOWN]
     if quotes:
@@ -235,7 +306,8 @@ def _weak_signals(report: MarketReport) -> list[str]:
     for o in report.weak_signals:
         cl = clusters.get(o.cluster_id)
         why = _failed_gates(cl) if cl else ""
-        out.append(f"- **{o.title}** ({o.score:.1f} / 10){': ' + why if why else ''}")
+        tag = ", product failure" if o.kind == "product_failure" else ""
+        out.append(f"- **{o.title}** ({o.score:.1f} / 10{tag}){': ' + why if why else ''}")
     return out + [""]
 
 
@@ -256,23 +328,30 @@ def _method(report: MarketReport) -> list[str]:
         "3. **Complaints** are extracted from Hacker News comments and low-rated App Store "
         "reviews. Each one quotes the customer word for word; quotes that can't be found in the "
         "source are dropped.",
-        "4. **Pain points** are clusters of similar complaints. Coverage asks whether each "
-        "competitor's own site claims to address the problem.",
+        "4. **Pain points** are clusters of similar complaints, each marked a product failure or "
+        "a need. For needs, coverage asks whether each competitor's own site claims to address "
+        "the problem.",
         f"5. **Gaps** are scored in code, never by the LLM. A pain point is ranked only with at "
-        f"least {s.gate_min_complaints} complaints from {s.gate_min_docs} documents across "
-        f"{s.gate_min_source_types} source types, and at most {s.max_complaints_per_doc} "
-        "complaints per document count.",
+        f"least {s.gate_min_complaints} complaints from {s.gate_min_docs} documents about "
+        f"{s.gate_min_companies} companies, and at most {s.max_complaints_per_doc} complaints per "
+        f"document count. Market gaps also need {s.gate_min_source_types} source types.",
         "6. **Verification:** every quote shown under a gap is checked word for word against its "
         "source and judged by an LLM for whether it supports the gap.",
         "",
         f"- Documents: {sum(docs.values())} ("
         + ", ".join(f"{k} {n}" for k, n in sorted(docs.items()))
         + ")",
+        "- Complaints: "
+        + ", ".join(
+            f"{SOURCE_NAMES.get(k, k)} {n}"
+            for k, n in Counter(c.source_type for c in report.complaints).most_common()
+        ),
     ]
     if v:
         out.append(
             f"- Verification: {v.get('opportunities_verified', 0)}/{v.get('opportunities', 0)} "
-            f"ranked gaps verified; {v.get('quotes_passed', 0)}/{v.get('quotes_checked', 0)} "
+            f"ranked pain points verified; {v.get('quotes_passed', 0)}/"
+            f"{v.get('quotes_checked', 0)} "
             "quotes passed"
             + (f" ({v['quote_pass_rate']:.0%})" if v.get("quote_pass_rate") is not None else "")
         )
@@ -343,7 +422,12 @@ def _failed_gates(cl: ComplaintCluster) -> str:
         reasons.append(f"{_n(len(cl.complaint_ids), 'complaint')} (needs {s.gate_min_complaints})")
     if cl.distinct_docs < s.gate_min_docs:
         reasons.append(f"{_n(cl.distinct_docs, 'document')} (needs {s.gate_min_docs})")
-    if len(cl.source_types) < s.gate_min_source_types:
+    if len(cl.companies) < s.gate_min_companies:
+        reasons.append(
+            f"only {', '.join(cl.companies) or 'no company'} (needs {s.gate_min_companies} "
+            "companies)"
+        )
+    if cl.category != "failure" and len(cl.source_types) < s.gate_min_source_types:
         reasons.append(
             f"only {_sources(cl.source_types)} (needs {s.gate_min_source_types} source types)"
         )

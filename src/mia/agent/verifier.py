@@ -4,10 +4,11 @@ Each round it:
 1. verifies the ranked opportunities (`analysis/verify.py`: verbatim check + LLM judge);
 2. compares the opportunities it sent for research last round with what they became, so the
    trace shows whether follow-up research changed them;
-3. picks up to `max_focus_targets` weak opportunities for targeted research: ranked ones that
+3. picks up to `max_focus_targets` weak market gaps for targeted research: ranked ones that
    failed verification, and the best-scoring weak signals (those that missed an evidence gate).
-   Each target goes to the Customer Scouts of up to `max_focus_competitors` competitors whose
-   customers raised it.
+   Product failures aren't researched further: more crash reports wouldn't make them gaps.
+   Each target goes to the Customer Scouts of up to `max_focus_competitors` competitors: those
+   whose customers raised it or, when only one vendor's customers did, the others.
 
 The graph only acts on the targets while research rounds remain (`max_verify_rounds`),
 collection still has budget, and enough requests are left for another analysis round.
@@ -46,7 +47,13 @@ def verify_round(state: dict) -> tuple[dict, list[dict]]:
     clusters = state.get("clusters", [])
     previous = state.get("research") or []
     rows += [_row("compare", line) for line in compare(previous, ranked, weak, clusters)]
-    targets = pick_targets(ranked, weak, clusters, state.get("complaints", []))
+    targets = pick_targets(
+        ranked,
+        weak,
+        clusters,
+        state.get("complaints", []),
+        [c.name for c in state.get("competitors", [])],
+    )
     go, why = research_allowed(state, targets, clusters)
     if targets:
         names = "; ".join(
@@ -69,14 +76,19 @@ def pick_targets(
     weak: list[Opportunity],
     clusters: list[ComplaintCluster],
     complaints: list[Complaint],
+    competitors: list[str] | tuple[str, ...] = (),
 ) -> list[dict]:
     s = runtime.settings()
     by_cluster = {cl.id: cl for cl in clusters}
     by_id = {c.id: c for c in complaints}
-    candidates = [(o, True, "ranked but not verified") for o in ranked if not o.verified]
+    candidates = [
+        (o, True, "ranked but not verified")
+        for o in ranked
+        if not o.verified and o.kind != "product_failure"
+    ]
     for o in weak:
         cl = by_cluster.get(o.cluster_id)
-        if cl is not None:
+        if cl is not None and o.kind != "product_failure":
             candidates.append((o, False, f"weak signal: {missing(cl)}"))
     candidates.sort(key=lambda item: -item[0].score)
     targets = []
@@ -87,6 +99,10 @@ def pick_targets(
         owners = [by_id[i].company for i in cl.complaint_ids if i in by_id]
         counts = Counter(name for name in owners if name)
         companies = [name for name, _ in counts.most_common(s.max_focus_competitors)]
+        if len(cl.companies) < s.gate_min_companies:
+            # more from the one vendor can't help: look for it at the others
+            others = [name for name in competitors if name not in cl.companies]
+            companies = others[: s.max_focus_competitors] or companies
         targets.append(
             {
                 "title": o.title,
@@ -154,7 +170,9 @@ def missing(cl: ComplaintCluster) -> str:
         out.append(f"{len(cl.complaint_ids)}/{s.gate_min_complaints} complaints")
     if cl.distinct_docs < s.gate_min_docs:
         out.append(f"{cl.distinct_docs}/{s.gate_min_docs} documents")
-    if len(cl.source_types) < s.gate_min_source_types:
+    if len(cl.companies) < s.gate_min_companies:
+        out.append(f"{len(cl.companies)}/{s.gate_min_companies} companies")
+    if cl.category != "failure" and len(cl.source_types) < s.gate_min_source_types:
         out.append(f"{len(cl.source_types)}/{s.gate_min_source_types} source types")
     return ", ".join(out) or ("passes the gates" if passes_gates(cl) else "unknown")
 

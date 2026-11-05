@@ -106,11 +106,13 @@ def test_research_stops_when_collection_has_no_budget_left(world):
     assert "collection has used its share of the budget" in targets["result_summary"]
 
 
-def _opp(title: str, cluster: str, score: float, verified: bool = False) -> Opportunity:
+def _opp(
+    title: str, cluster: str, score: float, verified: bool = False, kind: str = "unmet_need"
+) -> Opportunity:
     return Opportunity(
         title=title,
         cluster_id=cluster,
-        kind="unmet_need",
+        kind=kind,
         coverage=0,
         score=score,
         score_breakdown={},
@@ -120,7 +122,9 @@ def _opp(title: str, cluster: str, score: float, verified: bool = False) -> Oppo
     )
 
 
-def _cluster(cid: str, n: int, sources: list[str]) -> ComplaintCluster:
+def _cluster(
+    cid: str, n: int, sources: list[str], companies: tuple[str, ...] = ("A", "B")
+) -> ComplaintCluster:
     return ComplaintCluster(
         id=cid,
         label=f"{cid} label",
@@ -129,7 +133,7 @@ def _cluster(cid: str, n: int, sources: list[str]) -> ComplaintCluster:
         distinct_docs=n,
         source_types=sources,
         mean_severity=2,
-        companies=[],
+        companies=list(companies),
     )
 
 
@@ -147,6 +151,26 @@ def test_targets_are_unverified_and_weak_opportunities_best_score_first(settings
     assert targets[0]["why"] == "weak signal: 2/5 complaints, 2/3 documents, 1/2 source types"
     unverified = verifier.pick_targets([_opp("A", "a", 7.0)], weak, clusters, [])
     assert unverified[0]["why"] == "ranked but not verified"
+
+
+def test_product_failures_are_never_researched(settings):
+    runtime.configure(settings=settings)
+    clusters = [_cluster("a", 2, ["hn"]), _cluster("b", 2, ["hn"])]
+    failure = _opp("Crashes", "a", 9.0, kind="product_failure")
+    gap = _opp("Price", "b", 3.0)
+    assert [t["title"] for t in verifier.pick_targets([failure], [failure, gap], clusters, [])] == [
+        "Price"
+    ]
+
+
+def test_a_one_vendor_problem_is_researched_at_the_other_vendors(settings):
+    runtime.configure(settings=settings)
+    clusters = [_cluster("a", 6, ["hn", "app_store"], companies=("Otter",))]
+    [target] = verifier.pick_targets(
+        [], [_opp("Consent", "a", 6.0)], clusters, [], ["Otter", "Fathom", "Granola"]
+    )
+    assert target["competitors"] == ["Fathom", "Granola"]
+    assert target["why"] == "weak signal: 1/2 companies"
 
 
 def test_no_research_after_the_last_round(settings):

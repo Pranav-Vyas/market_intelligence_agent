@@ -105,6 +105,44 @@ def test_render_without_opportunities_says_so():
     assert "No pain point passed the evidence gates" in md
 
 
+def _failure() -> Opportunity:
+    return Opportunity(
+        title="App crashes",
+        cluster_id="c0",
+        kind="product_failure",
+        coverage=0.0,
+        score=9.5,
+        score_breakdown={"F": 1.0},
+        rationale="Customers of 2 of 4 competitors report it.",
+        evidence=["d1:0:0"],
+        verified=True,
+    )
+
+
+def test_product_failures_get_their_own_section_and_never_count_as_gaps():
+    gap = _report().opportunities[0]
+    md = render(_report(opportunities=[gap, _failure()]))
+    assert "1 ranked market gap · 1 product failure" in md
+    gaps, failures = md.split("## Potential market gaps")[1].split("## Product failures")
+    assert "Too expensive" in gaps and "App crashes" not in gaps
+    assert "### 1. App crashes (9.5 / 10)" in failures
+    assert "- **Spread:** Customers of 2 of 4" in failures
+    assert "- **Top market gaps:** Too expensive" in md
+    assert "- **Most reported product failures:** App crashes." in md
+
+
+def test_only_product_failures_means_no_market_gap():
+    md = render(_report(opportunities=[_failure()]))
+    assert "No pain point passed the evidence gates" in md
+    assert "### 1. App crashes" in md
+
+
+def test_render_states_source_skew_and_thin_evidence():
+    md = render(_report())
+    assert "**Source skew:** 100% of complaints come from" in md
+    assert "**Thin evidence:**" in md
+
+
 def test_render_warns_about_stubs():
     md = render(_report(stats={"stubs": ["discovery.discover_competitors"]}))
     assert "fake data" in md
@@ -128,7 +166,10 @@ def test_gap_reads_like_the_topic_example():
 def test_weak_signals_say_which_gate_failed():
     weak = _report().opportunities[0].model_copy(update={"verified": False})
     md = render(_report(opportunities=[], weak_signals=[weak]))
-    assert "1 complaint (needs 5); 1 document (needs 3); only Reddit (needs 2 source types)" in md
+    assert (
+        "1 complaint (needs 5); 1 document (needs 3); only Otter (needs 2 companies); "
+        "only Reddit (needs 2 source types)"
+    ) in md
 
 
 def test_prices_show_the_annual_price_in_brackets():
@@ -161,7 +202,7 @@ def test_method_reports_verification():
             "quote_pass_rate": 0.8,
         }
     }
-    assert "- Verification: 1/2 ranked gaps verified; 8/10 quotes passed (80%)" in render(
+    assert "- Verification: 1/2 ranked pain points verified; 8/10 quotes passed (80%)" in render(
         _report(stats=stats)
     )
 

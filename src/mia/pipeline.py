@@ -121,7 +121,9 @@ def analyze(
     chunks = chunk_documents([d for d in todo if d.source_type in COMPLAINT_SOURCE_TYPES])
     complaints = list(known_complaints) + extract_complaints(chunks)
     clusters = cluster_complaints(complaints)
-    coverage = {cl.id: assess_coverage(cl, competitors, index) for cl in clusters}
+    coverage = {
+        cl.id: assess_coverage(cl, competitors, index) for cl in clusters if cl.category == "need"
+    }
     ranked, weak = score_opportunities(clusters, coverage, len(competitors))
     return Analysis(features, complaints, clusters, ranked, weak)
 
