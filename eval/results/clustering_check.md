@@ -22,5 +22,5 @@ smaller threshold for the largest clusters when tuning (task B13).
 
 The complete linkage idea above is ruled out: it scores below average linkage at every useful
 threshold (`clustering_tuning.md`). Embeddings group by shared words, so no threshold fixes the
-broad cluster. One LLM call now regroups the clusters instead. In run `20261105-020724` the largest
+broad cluster. One LLM call now regroups the clusters instead. In run `20261105-184252` the largest
 pain point has 18 complaints, against 29 before, and reads as one problem.

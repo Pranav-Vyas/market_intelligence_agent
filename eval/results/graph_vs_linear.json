@@ -1,142 +1,10 @@
 {
   "graph": {
-    "run": "20261105-020724",
+    "run": "20261105-184252",
     "engine": "graph",
     "competitors": 8,
     "documents_by_source": {
-      "official": 40,
-      "pricing": 7,
-      "hn": 172,
-      "app_store": 150
-    },
-    "complaint_documents_by_company": {
-      "Otter": 79,
-      "Fathom": 3,
-      "Fireflies": 62,
-      "Avoma": 7,
-      "tl;dv": 12,
-      "Krisp": 53,
-      "Granola": 80,
-      "Read.ai": 26
-    },
-    "complaints": 229,
-    "clusters": 19,
-    "market_gaps": 3,
-    "product_failures": 6,
-    "verified_market_gaps": 3,
-    "weak_signals": 10,
-    "quote_pass_rate": 0.902,
-    "requests": 15,
-    "cache_hits": 77,
-    "calls": 92,
-    "input_tokens": 4600,
-    "output_tokens": 613,
-    "fallbacks": 17,
-    "requests_by_model": {
-      "gemini/gemini-3.5-flash-lite": 15
-    },
-    "runtime_s": 102.81,
-    "offline": false,
-    "top_gaps": [
-      "Security concerns regarding cloud storage and data handling",
-      "Poor transcription quality and inaccurate summaries",
-      "Difficult subscription cancellation and high prices"
-    ]
-  },
-  "linear": {
-    "run": "20261105-020924",
-    "engine": "linear",
-    "competitors": 8,
-    "documents_by_source": {
-      "official": 35,
-      "pricing": 7,
-      "hn": 172,
-      "app_store": 150
-    },
-    "complaint_documents_by_company": {
-      "Otter": 79,
-      "Fathom": 3,
-      "Fireflies": 62,
-      "Avoma": 7,
-      "tl;dv": 12,
-      "Krisp": 53,
-      "Granola": 80,
-      "Read.ai": 26
-    },
-    "complaints": 229,
-    "clusters": 19,
-    "market_gaps": 3,
-    "product_failures": 6,
-    "verified_market_gaps": 3,
-    "weak_signals": 10,
-    "quote_pass_rate": 0.902,
-    "requests": 0,
-    "cache_hits": 48,
-    "calls": 48,
-    "input_tokens": 0,
-    "output_tokens": 0,
-    "fallbacks": 0,
-    "requests_by_model": {},
-    "runtime_s": 15.04,
-    "offline": false,
-    "top_gaps": [
-      "Security concerns regarding cloud storage and data handling",
-      "Poor transcription quality and inaccurate summaries",
-      "Difficult subscription cancellation and high prices"
-    ]
-  },
-  "fresh": {
-    "run": "20261105-020944",
-    "engine": "graph",
-    "competitors": 8,
-    "documents_by_source": {
-      "official": 38,
-      "pricing": 7,
-      "hn": 158,
-      "app_store": 180
-    },
-    "complaint_documents_by_company": {
-      "Fireflies": 62,
-      "Otter": 80,
-      "tl;dv": 12,
-      "Fathom": 4,
-      "Avoma": 7,
-      "Granola": 80,
-      "Krisp": 53,
-      "Transkriptor": 40
-    },
-    "complaints": 269,
-    "clusters": 20,
-    "market_gaps": 8,
-    "product_failures": 9,
-    "verified_market_gaps": 8,
-    "weak_signals": 3,
-    "quote_pass_rate": 0.805,
-    "requests": 92,
-    "cache_hits": 11,
-    "calls": 103,
-    "input_tokens": 284061,
-    "output_tokens": 48060,
-    "fallbacks": 28,
-    "requests_by_model": {
-      "gemini/gemini-3.5-flash-lite": 92
-    },
-    "runtime_s": 682.86,
-    "offline": false,
-    "top_gaps": [
-      "Recording private conversations without consent",
-      "Inaccurate or poor quality transcription",
-      "Intrusive ai features and permissions",
-      "Bot joins meetings uninvited",
-      "Unable to export or save transcripts"
-    ]
-  },
-  "replay": {
-    "run": "20261105-020925",
-    "engine": "graph",
-    "competitors": 8,
-    "documents_by_source": {
-      "official": 40,
+      "official": 37,
       "pricing": 7,
       "hn": 172,
       "app_store": 150
@@ -163,9 +31,95 @@
     "calls": 92,
     "input_tokens": 0,
     "output_tokens": 0,
-    "fallbacks": 17,
+    "fallbacks": 0,
     "requests_by_model": {},
-    "runtime_s": 18.26,
+    "runtime_s": 21.48,
+    "offline": false,
+    "top_gaps": [
+      "Security concerns regarding cloud storage and data handling",
+      "Poor transcription quality and inaccurate summaries",
+      "Difficult subscription cancellation and high prices"
+    ]
+  },
+  "linear": {
+    "run": "20261105-184719",
+    "engine": "linear",
+    "competitors": 8,
+    "documents_by_source": {
+      "official": 35,
+      "pricing": 7,
+      "hn": 172,
+      "app_store": 150
+    },
+    "complaint_documents_by_company": {
+      "Otter": 79,
+      "Fathom": 3,
+      "Fireflies": 62,
+      "Avoma": 7,
+      "tl;dv": 12,
+      "Krisp": 53,
+      "Granola": 80,
+      "Read.ai": 26
+    },
+    "complaints": 229,
+    "clusters": 19,
+    "market_gaps": 3,
+    "product_failures": 6,
+    "verified_market_gaps": 3,
+    "weak_signals": 10,
+    "quote_pass_rate": 0.902,
+    "requests": 4,
+    "cache_hits": 44,
+    "calls": 48,
+    "input_tokens": 15180,
+    "output_tokens": 3033,
+    "fallbacks": 0,
+    "requests_by_model": {
+      "gemini/gemini-3.5-flash-lite": 4
+    },
+    "runtime_s": 244.94,
+    "offline": false,
+    "top_gaps": [
+      "Security concerns regarding cloud storage and data handling",
+      "Poor transcription quality and inaccurate summaries",
+      "Difficult subscription cancellation and high prices"
+    ]
+  },
+  "replay": {
+    "run": "20261105-184721",
+    "engine": "graph",
+    "competitors": 8,
+    "documents_by_source": {
+      "official": 37,
+      "pricing": 7,
+      "hn": 172,
+      "app_store": 150
+    },
+    "complaint_documents_by_company": {
+      "Otter": 79,
+      "Fathom": 3,
+      "Fireflies": 62,
+      "Avoma": 7,
+      "tl;dv": 12,
+      "Krisp": 53,
+      "Granola": 80,
+      "Read.ai": 26
+    },
+    "complaints": 229,
+    "clusters": 19,
+    "market_gaps": 3,
+    "product_failures": 6,
+    "verified_market_gaps": 3,
+    "weak_signals": 10,
+    "quote_pass_rate": 0.902,
+    "requests": 0,
+    "cache_hits": 92,
+    "calls": 92,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "fallbacks": 0,
+    "requests_by_model": {},
+    "runtime_s": 20.15,
     "offline": true,
     "top_gaps": [
       "Security concerns regarding cloud storage and data handling",
