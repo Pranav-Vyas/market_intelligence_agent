@@ -1,5 +1,5 @@
 {
-  "run": "20261105-020724",
+  "run": "20261105-184252",
   "complaints": 229,
   "rows": [
     {
@@ -604,8 +604,8 @@
       ],
       "more gap (F .25 S .25 G .35 E .15)": [
         "Poor transcription quality and inaccurate summaries",
-        "Difficult subscription cancellation and high prices",
-        "Security concerns regarding cloud storage and data handling"
+        "Security concerns regarding cloud storage and data handling",
+        "Difficult subscription cancellation and high prices"
       ],
       "more frequency (F .45 S .2 G .2 E .15)": [
         "Security concerns regarding cloud storage and data handling",

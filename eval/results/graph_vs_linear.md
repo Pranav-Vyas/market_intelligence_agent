@@ -31,5 +31,8 @@ Complaint documents per competitor:
 
 | Run | Requests | Cache hits | Tokens | Minutes |
 |---|---|---|---|---|
-| fresh (graph) | 92 | 11 | 332121 | 11.4 |
 | replay (graph) | 0 | 92 | 0 | 0.3 |
+
+## Fresh runs
+
+Not in the table above, because the corpus differs. Before the scouts moved to the bulk model: 92 requests and 11 cache hits, 332,121 tokens, 11.4 minutes. During a Flash-Lite overload, the same evening: 62 minutes and 40 failed calls, so it is not a cost measurement. See `pipeline_runs.json`.

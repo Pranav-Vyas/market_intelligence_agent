@@ -194,7 +194,7 @@
   {
     "market": "AI meeting assistants",
     "date": "2026-11-05",
-    "task": "Day 7: graph on the Day 6 cached corpus after tuning; the snapshot is made from this run",
+    "task": "Day 7: graph on the Day 6 cached corpus after tuning, before the smart model routing",
     "engine": "graph",
     "run_id": "ai-meeting-assistants-20261105-020724",
     "competitors": [
@@ -263,7 +263,7 @@
   {
     "market": "AI meeting assistants",
     "date": "2026-11-05",
-    "task": "Day 7: graph from an empty cache after tuning",
+    "task": "Day 7: graph from an empty cache after tuning, before the smart model routing",
     "engine": "graph",
     "run_id": "ai-meeting-assistants-20261105-020944",
     "competitors": [
@@ -328,5 +328,144 @@
     },
     "runtime_s": 682.86,
     "notes": "Pages and reviews were collected live, so the corpus differs: discovery found Transkriptor instead of Read.ai. Research lifted one weak signal to a ranked, verified gap (+3 complaints). gemini-3.8-flash answered no request."
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-11-05",
+    "task": "Day 7: graph on the cached corpus with routing (scouts on bulk, smart = gemini-3.6-flash); the snapshot is made from this run",
+    "engine": "graph",
+    "run_id": "ai-meeting-assistants-20261105-184252",
+    "competitors": [
+      "Otter",
+      "Fathom",
+      "Fireflies",
+      "Avoma",
+      "tl;dv",
+      "Krisp",
+      "Granola",
+      "Read.ai"
+    ],
+    "documents_by_source": {
+      "official": 37,
+      "pricing": 7,
+      "hn": 172,
+      "app_store": 150
+    },
+    "complaint_documents_by_company": {
+      "Otter": 79,
+      "Fathom": 3,
+      "Fireflies": 62,
+      "Avoma": 7,
+      "tl;dv": 12,
+      "Krisp": 53,
+      "Granola": 80,
+      "Read.ai": 26
+    },
+    "complaints": 229,
+    "clusters": 19,
+    "ranked_market_gaps": 3,
+    "product_failures": 6,
+    "weak_signals": 10,
+    "verification": {
+      "opportunities": 9,
+      "opportunities_verified": 9,
+      "verification_rate": 1.0,
+      "quotes_checked": 61,
+      "quotes_passed": 55,
+      "quote_pass_rate": 0.902
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 2,
+      "researched": [
+        "after research: 'Recording meetings without consent' weak 6.9 → 'Recording meetings without consent' weak 6.9 (+0 complaints), unchanged",
+        "after research: 'Forced google or microsoft login' weak 6.5 → 'Forced google or microsoft login' weak 6.5 (+0 complaints), unchanged"
+      ]
+    },
+    "llm": {
+      "requests": 0,
+      "cache_hits": 92,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "fallbacks": 0,
+      "requests_by_model": {},
+      "requests_by_phase": {}
+    },
+    "runtime_s": 21.48,
+    "warnings": 0,
+    "notes": "Repeated until no call failed, so every answer came from the cache on this last pass. Flash-Lite returned 503 high demand that evening, which took three passes."
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-11-05",
+    "task": "Day 7: graph from an empty cache during a Flash-Lite overload",
+    "engine": "graph",
+    "run_id": "ai-meeting-assistants-20261105-184742",
+    "competitors": [
+      "Otter",
+      "Fireflies.ai",
+      "Fathom",
+      "tl;dv",
+      "Avoma",
+      "Krisp",
+      "Granola",
+      "Grain"
+    ],
+    "documents_by_source": {
+      "official": 37,
+      "pricing": 7,
+      "hn": 172,
+      "app_store": 139
+    },
+    "complaint_documents_by_company": {
+      "Otter": 79,
+      "Fireflies.ai": 62,
+      "Fathom": 4,
+      "tl;dv": 12,
+      "Avoma": 7,
+      "Krisp": 53,
+      "Granola": 80,
+      "Grain": 14
+    },
+    "complaints": 131,
+    "clusters": 20,
+    "ranked_market_gaps": 4,
+    "product_failures": 0,
+    "weak_signals": 16,
+    "verification": {
+      "opportunities": 4,
+      "opportunities_verified": 0,
+      "verification_rate": 0.0,
+      "quotes_checked": 30,
+      "quotes_passed": 0,
+      "quote_pass_rate": 0.0
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 3,
+      "researched": [
+        "after research: 'Records meetings without user consent' ranked 8.9 → 'Records meetings without user consent' ranked 8.9 (+0 complaints), unchanged",
+        "after research: 'Missing calendar view for meetings' weak 7.5 → 'Missing calendar view for meetings' weak 7.5 (+0 complaints), unchanged",
+        "after research: 'Records meetings without user consent' ranked 8.9 → 'Records meetings without user consent' ranked 8.9 (+0 complaints), unchanged",
+        "after research: 'Missing calendar view for meetings' weak 7.5 → 'Missing calendar view for meetings' weak 7.5 (+0 complaints), unchanged"
+      ]
+    },
+    "llm": {
+      "requests": 55,
+      "cache_hits": 41,
+      "input_tokens": 186418,
+      "output_tokens": 29213,
+      "fallbacks": 0,
+      "requests_by_model": {
+        "gemini/gemini-3.5-flash-lite": 54,
+        "gemini/gemini-3.6-flash": 1
+      },
+      "requests_by_phase": {
+        "collection": 24
+      }
+    },
+    "runtime_s": 3719.81,
+    "warnings": 40,
+    "notes": "Not a cost measurement. Flash-Lite 503s stopped the run at discovery twice and then failed 40 calls, so complaint batches, feature rows and every quote check were skipped. The run still exited normally, with its problems listed in the report. Shows what an overload does to a live run."
   }
 ]

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from mia.llm import (
     LLM,
+    MAX_ATTEMPTS,
     LLMBudgetExceeded,
     LLMCacheMiss,
     LLMConfigError,
@@ -113,7 +114,7 @@ def test_unavailable_smart_model_falls_back_to_bulk(settings):
     backend = _overloaded_smart_model()
     llm = LLM(settings, backends={"fake": backend}, sleep=lambda s: None)
     assert llm.extract("x", schema=Item, model="smart") == Item(name="pricing", severity=2)
-    assert [c["model"] for c in backend.calls] == ["smart-model"] * 5 + ["bulk-model"]
+    assert [c["model"] for c in backend.calls] == ["smart-model"] * MAX_ATTEMPTS + ["bulk-model"]
     assert llm.usage.fallbacks == 1
     assert llm.usage.as_dict()["fallbacks"] == 1
 
@@ -126,7 +127,7 @@ def test_offline_falls_back_to_the_cached_bulk_answer(settings):
 
 
 def test_unavailable_bulk_model_is_not_hidden(settings):
-    backend = FakeBackend([TransientError()] * 5)
+    backend = FakeBackend([TransientError()] * MAX_ATTEMPTS)
     llm = LLM(settings, backends={"fake": backend}, sleep=lambda s: None)
     with pytest.raises(LLMUnavailable):
         llm.complete("x", model="bulk")
@@ -257,3 +258,22 @@ def test_a_short_retry_delay_is_waited_for(settings):
     llm = LLM(settings, backends={"fake": Busy([TransientError(), "ok"])}, sleep=sleeps.append)
     assert llm.complete("x") == "ok"
     assert [t for t in sleeps if t > 0.01] == [7.0]  # above the 2 s backoff, below the cap
+
+
+def test_a_silent_connection_times_out_and_can_be_retried(monkeypatch):
+    import socket
+
+    import httpx
+
+    from mia import llm as llm_module
+
+    with socket.socket() as server:  # accepts the connection, then never answers
+        server.bind(("127.0.0.1", 0))
+        server.listen()
+        host, port = server.getsockname()
+        monkeypatch.setenv("GOOGLE_GEMINI_BASE_URL", f"http://{host}:{port}")
+        monkeypatch.setattr(llm_module, "REQUEST_TIMEOUT_MS", 300)
+        backend = llm_module.GeminiBackend("test-key")
+        with pytest.raises(httpx.TimeoutException) as caught:
+            backend.generate("any-model", llm_module.LLMRequest("hello"))
+    assert backend.is_retryable(caught.value)

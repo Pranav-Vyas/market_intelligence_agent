@@ -82,7 +82,7 @@ def test_scout_searches_until_the_threshold(setup):
     docs, steps = scout(ACME, MARKET)
     assert len(docs) == 18  # 3 + 5 + 5 + 5
     assert world.calls[2:] == [("hn", "bot joins calls"), ("app_store", "crash"), ("hn", "cancel")]
-    assert [c["model"] for c in backend.calls] == ["smart-model"] * 3
+    assert [c["model"] for c in backend.calls] == ["bulk-model"] * 3
     assert "Tried so far:\n- hn default queries: 3 new" in backend.calls[0]["prompt"]
     assert steps[-1]["result_summary"] == "reached 18 complaint documents"
     assert sum(step["requests"] for step in steps) == 3

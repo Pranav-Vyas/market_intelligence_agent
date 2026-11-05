@@ -46,10 +46,11 @@ COLLECTION = "collection"
 R = TypeVar("R")
 log = logging.getLogger(__name__)
 
-MAX_ATTEMPTS = 5
+MAX_ATTEMPTS = 7  # about 2 minutes of backoff: demand spikes outlast shorter waits
 THINKING_LEVELS = ("minimal", "low", "medium", "high")
 BACKOFF_BASE_S = 2.0
 BACKOFF_MAX_S = 60.0
+REQUEST_TIMEOUT_MS = 180_000  # a silent connection otherwise hangs the whole run indefinitely
 
 
 class LLMError(Exception):
@@ -107,8 +108,11 @@ class GeminiBackend:
         if not api_key:
             raise LLMConfigError("GEMINI_API_KEY is not set. Add it to .env (see .env.example).")
         from google import genai
+        from google.genai import types
 
-        self._client = genai.Client(api_key=api_key)
+        self._client = genai.Client(
+            api_key=api_key, http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS)
+        )
 
     def generate(self, model: str, req: LLMRequest) -> RawResponse:
         from google.genai import types

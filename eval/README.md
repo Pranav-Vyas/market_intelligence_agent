@@ -11,6 +11,7 @@
 | `gold/complaint_themes_*.json` | Each complaint summary's theme, and which themes are failures (task B13) |
 | `tune_clustering.py`, `results/clustering_tuning.{json,md}` | Linkage, thresholds and regrouping against those themes; ranking under other weights and gates (task B13) |
 | `results/top5_check.md` | Hand check of the top pain points (task B13) |
+| `compare_regrouping.py`, `results/regrouping_models.md` | Regrouping on flash-lite, 3.6 Flash and 3.8 Flash (task B13) |
 | `compare_runs.py`, `results/graph_vs_linear.{json,md}` | Graph vs linear, and cost per fresh and cached run (task A15) |
 
 ## Retrieval
@@ -91,14 +92,25 @@ uv run python eval/compare_runs.py <graph run.json> <linear run.json> --fresh <r
 ```
 
 On the same cached pages and reviews, the graph costs about twice the LLM calls of the linear
-pipeline and finds the same complaints. Its gain is 5 more official pages, which changed one
-coverage judgment. Follow-up research found no new documents on this corpus, though in the fresh
-run it lifted one weak signal to a ranked gap. Treat that as one run, not a measured advantage.
+pipeline (92 vs 48) and finds the same complaints. Its gain is 2 more official pages, which changed
+some coverage judgments. Follow-up research found no new documents on this corpus, though in one
+fresh run it lifted a weak signal to a ranked gap. Treat that as one run, not a measured advantage.
 
 A fresh run makes about 103 LLM calls (92 requests, the rest repeats answered by the cache) in
 11 minutes, against about 164 calls before tuning, on a newly collected corpus each time. It stays
 well inside the cap of 200. Scout decisions now stop when searches run dry, research skips
 competitors with nothing left, and product failures skip the coverage call.
 
-gemini-3.8-flash answered none of these requests (503 high demand, then its daily quota), so every
-smart call fell back to flash-lite. The results therefore show what flash-lite does.
+That fresh run predates moving the scouts to the bulk model, and there's no clean fresh run since
+(below). The move shouldn't change the number of calls, only which model answers them.
+
+**Models.** The free tier allowed 3.5, 3.6, 3.7 and 3.8 Flash about 20 requests a day each on
+2026-11-05, and 3.8 answered none of that day's requests. So the scouts now use the bulk model, and
+the smart model, gemini-3.6-flash, only makes the feature list and any extra discovery queries
+(`results/regrouping_models.md`).
+
+**Overload.** That evening Flash-Lite returned 503 high demand for hours. Repeating a cached run
+until every call succeeded took three passes. A fresh run stopped at discovery twice, then finished
+in 62 minutes with 40 failed calls, 131 complaints instead of about 260 and no verified quotes. It
+still exited normally and listed the problems in its report. Demo from the snapshot, and check a
+live report's "recovered problems" before trusting it.

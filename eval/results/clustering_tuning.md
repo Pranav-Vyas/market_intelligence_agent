@@ -1,4 +1,4 @@
-# Clustering tuning (task B13): 229 complaints, run 20261105-020724
+# Clustering tuning (task B13): 229 complaints, run 20261105-184252
 
 | Method | Threshold | B³ precision | B³ recall | B³ F1 | Clusters ≥5 | Complaints in them | Their purity | Largest |
 |---|---|---|---|---|---|---|---|---|
@@ -25,7 +25,7 @@ Failure/need category agrees with the drafted themes on 0.904 of the complaints 
 | Setting | Ranked, best first |
 |---|---|
 | default (F .35 S .25 G .25 E .15) | Security concerns regarding cloud storage and data handling; Poor transcription quality and inaccurate summaries; Difficult subscription cancellation and high prices |
-| more gap (F .25 S .25 G .35 E .15) | Poor transcription quality and inaccurate summaries; Difficult subscription cancellation and high prices; Security concerns regarding cloud storage and data handling |
+| more gap (F .25 S .25 G .35 E .15) | Poor transcription quality and inaccurate summaries; Security concerns regarding cloud storage and data handling; Difficult subscription cancellation and high prices |
 | more frequency (F .45 S .2 G .2 E .15) | Security concerns regarding cloud storage and data handling; Poor transcription quality and inaccurate summaries; Difficult subscription cancellation and high prices |
 | more severity (F .25 S .35 G .25 E .15) | Security concerns regarding cloud storage and data handling; Poor transcription quality and inaccurate summaries; Difficult subscription cancellation and high prices |
 | equal (.25 each) | Poor transcription quality and inaccurate summaries; Security concerns regarding cloud storage and data handling; Difficult subscription cancellation and high prices |
