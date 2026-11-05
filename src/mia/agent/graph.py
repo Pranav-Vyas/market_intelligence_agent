@@ -276,13 +276,18 @@ def after_verifier(state: ResearchState) -> list[Send] | str:
             known = [d.id for d in state.get("documents", []) if d.company == name]
             # every earlier targeted search for this competitor: pain points get renamed when
             # they are re-clustered, so matching on the label alone would miss them
-            tried = [
-                f'{r["source"]} "{r["query"]}": {r["new"]} new, for "{r["focus"]}"'
+            earlier = [
+                r
                 for r in state.get("trace", [])
                 if r.get("agent") == "customer_scout"
                 and r.get("competitor") == name
                 and r.get("focus")
                 and r.get("query")
+            ]
+            if earlier and not any(r["new"] for r in earlier):
+                continue  # nothing found for this competitor in earlier rounds: it is exhausted
+            tried = [
+                f'{r["source"]} "{r["query"]}": {r["new"]} new, for "{r["focus"]}"' for r in earlier
             ]
             task = ScoutTask(
                 run_id=state["run_id"],

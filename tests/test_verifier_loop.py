@@ -10,7 +10,7 @@ import pytest
 from mia import runtime
 from mia.agent import customer_scout, graph, verifier
 from mia.llm import LLM
-from mia.schemas import ComplaintCluster, Document, Opportunity, doc_id
+from mia.schemas import Competitor, ComplaintCluster, Document, Opportunity, doc_id
 from tests.conftest import FakeBackend
 from tests.test_pipeline import _fake_llm_reply
 
@@ -171,6 +171,32 @@ def test_a_one_vendor_problem_is_researched_at_the_other_vendors(settings):
     )
     assert target["competitors"] == ["Fathom", "Granola"]
     assert target["why"] == "weak signal: 1/2 companies"
+
+
+def test_a_competitor_with_no_results_from_earlier_research_is_skipped():
+    def search(name: str, new: int) -> dict:
+        return {
+            "agent": "customer_scout",
+            "competitor": name,
+            "focus": "price",
+            "query": "cost",
+            "source": "hn",
+            "new": new,
+        }
+
+    competitors = [Competitor(name=n, website=f"https://{n}.example.com") for n in "ABC"]
+    state = {
+        "run_id": "r",
+        "market": MARKET,
+        "competitors": competitors,
+        "documents": [],
+        "trace": [search("A", 0), search("A", 0), search("B", 2), search("B", 0)],
+        "research": [{"label": "price", "competitors": ["A", "B", "C"]}],
+    }
+    sends = graph.after_verifier(state)
+    # A found nothing before; B found something; C hasn't been tried
+    assert [send.arg["competitor"].name for send in sends] == ["B", "C"]
+    assert len(sends[0].arg["tried"]) == 2
 
 
 def test_no_research_after_the_last_round(settings):

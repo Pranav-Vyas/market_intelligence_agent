@@ -9,8 +9,9 @@
 3. With a `focus` (targeted research asked for by the Verifier), there are no default searches:
    the scout looks only for complaints about that pain point, for `focus_scout_steps` actions.
 
-The scout stops at the threshold, at its step cap, when the LLM says "done", or when collection's
-share of the request budget runs out. Its last trace entry says which.
+The scout stops at the threshold, at its step cap, when the LLM says "done", after
+`MAX_EMPTY_SEARCHES` chosen searches in a row find nothing new, or when collection's share of the
+request budget runs out. Its last trace entry says which.
 """
 
 from __future__ import annotations
@@ -22,19 +23,26 @@ from mia.collectors.dedupe import dedupe
 from mia.llm import COLLECTION, RECOVERABLE
 from mia.schemas import Competitor, Document
 
+MAX_EMPTY_SEARCHES = 2  # public complaints about a small product run out quickly
+
 SOURCE_HELP = {
-    "hn": "Hacker News comments; the query is searched next to the product name",
-    "app_store": "low-rated App Store reviews; a query keeps the reviews that use its words",
+    "hn": "Hacker News comments; the query is searched next to the product name, so short, "
+    "common words find the most",
+    "app_store": "the app's recent low-rated reviews; a query only keeps those that use its words, "
+    "so it can't find more once the default search returned 0",
 }
 
 SYSTEM = """You steer a research agent that collects public customer complaints about one
 software product, for a market report.
 
 Each step, choose one action:
-- "search": one source and a query of 1 to 4 words, without the product name (it is added for
-  you). Pick words customers use when something goes wrong.
+- "search": one source and a query of 1 to 3 words, without the product name (it is added for
+  you). Pick words customers use when something goes wrong, not the wording of a report.
 - "done": when more searches are unlikely to find new complaints.
 
+Each search costs quota, so choose "done" rather than guess:
+- A source that returned 0 new documents for its default queries has nothing more to give.
+- After a search that found nothing, change the words completely or stop.
 Never repeat a query you already tried on the same source. "reason" is one short sentence."""
 
 
@@ -57,8 +65,9 @@ def scout(
     steps: list[dict] = []
     tried: list[str] = [f"{t} (earlier round)" for t in tried_before]
     max_steps = s.focus_scout_steps if focus else s.max_scout_steps
+    empty = 0
 
-    def run(source: str, query: str | None, label: str, before: tuple[int, int]) -> None:
+    def run(source: str, query: str | None, label: str, before: tuple[int, int]) -> int:
         try:
             found = pipeline.collect_complaints(
                 c, market, source, query=query, limit=s.max_complaint_docs_per_source
@@ -73,6 +82,7 @@ def scout(
         summary = f"{source} {label}: {len(new)} new documents, {_count(docs, known)} in total"
         row = _step(c, "search", summary + (f"; failed: {error}" if error else ""), before)
         steps.append({**row, "source": source, "query": query, "new": len(new), "focus": focus})
+        return len(new)
 
     with llm.phase(COLLECTION):
         if not focus:
@@ -107,7 +117,16 @@ def scout(
                 tried.append(f"{action.source} {label}: invalid or repeated action, skipped")
                 steps.append(_step(c, "invalid", f"skipped {action.source} {label}", before))
                 continue
-            run(action.source, query, label, before)  # the decision counts with its search
+            found = run(action.source, query, label, before)  # the decision counts with its search
+            empty = 0 if found else empty + 1
+            if empty == MAX_EMPTY_SEARCHES and not focus:
+                summary = (
+                    f"stopped after {empty} searches in a row found nothing new, with "
+                    f"{_count(docs, known)} complaint documents "
+                    f"(target {s.min_complaint_docs_per_company})"
+                )
+                steps.append(_step(c, "stop", summary, llm.thread_usage()))
+                return docs, steps
 
     now = llm.thread_usage()
     if focus:

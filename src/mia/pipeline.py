@@ -158,6 +158,9 @@ def make_report(
         weak_signals=analysis.weak,
         stats={
             "documents_by_source": dict(Counter(d.source_type for d in docs)),
+            "complaint_documents_by_company": dict(
+                Counter(d.company for d in docs if d.source_type in COMPLAINT_SOURCE_TYPES)
+            ),
             "llm": runtime.llm().usage.as_dict(),
             "verification_rate": verification["verification_rate"],
             "verification": verification,
