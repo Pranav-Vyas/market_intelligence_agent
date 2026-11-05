@@ -11,6 +11,7 @@
 | `gold/complaint_themes_*.json` | Each complaint summary's theme, and which themes are failures (task B13) |
 | `tune_clustering.py`, `results/clustering_tuning.{json,md}` | Linkage, thresholds and regrouping against those themes; ranking under other weights and gates (task B13) |
 | `results/top5_check.md` | Hand check of the top pain points (task B13) |
+| `compare_regrouping.py`, `results/regrouping_models.md` | Regrouping on flash-lite, 3.6 Flash and 3.8 Flash (task B13) |
 | `compare_runs.py`, `results/graph_vs_linear.{json,md}` | Graph vs linear, and cost per fresh and cached run (task A15) |
 
 ## Retrieval
