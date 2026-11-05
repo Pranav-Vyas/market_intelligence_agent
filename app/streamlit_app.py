@@ -1,7 +1,8 @@
-"""Market Gap Scout browser (tasks C11, C12).
+"""Market Gap Scout browser (tasks C11, C12, C14).
 
-Pick a run → tabs for Competitors / Features / Pricing / Complaints / Gaps / Agent trace /
-Report. The trace can be browsed per scout and per competitor, next to the graph diagram.
+Pick a run → tabs for Competitors / Features / Pricing / Complaints / Gaps / Evidence /
+Agent trace / Report. The trace can be browsed per scout and per competitor, next to the graph
+diagram. Evidence searches the market's saved hybrid index live.
 
 Run with:
     uv sync --extra ui
@@ -96,6 +97,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 }
 .badge-unmet  { background: #1f3a52; color: #58a6ff; }
 .badge-poor   { background: #3a1f1f; color: #ff7b72; }
+.badge-failure { background: #2e2a1f; color: #d29922; }
 .badge-verified   { background: #1a3a2a; color: #3fb950; }
 .badge-unverified { background: #2e2e1f; color: #d29922; }
 .quote-block {
@@ -205,9 +207,43 @@ def failed_gates(cl: dict) -> str:
         out.append(f"{len(cl['complaint_ids'])}/{s.gate_min_complaints} complaints")
     if cl.get("distinct_docs", 0) < s.gate_min_docs:
         out.append(f"{cl['distinct_docs']}/{s.gate_min_docs} documents")
-    if len(cl.get("source_types", [])) < s.gate_min_source_types:
+    if len(cl.get("companies", [])) < s.gate_min_companies:
+        out.append(f"{len(cl['companies'])}/{s.gate_min_companies} companies")
+    needs_sources = cl.get("category", "need") != "failure"
+    if needs_sources and len(cl.get("source_types", [])) < s.gate_min_source_types:
         out.append(f"{len(cl['source_types'])}/{s.gate_min_source_types} source types")
     return ", ".join(out)
+
+
+def index_version(market_slug: str) -> float | None:
+    """When the market's index was saved, so a newer run's index replaces the cached one."""
+    saved = SETTINGS.indexes_dir / market_slug / "chunks.json"
+    return saved.stat().st_mtime if saved.exists() else None
+
+
+@st.cache_resource(show_spinner="Loading the evidence index…", max_entries=3)
+def load_evidence_index(market_slug: str, version: float):
+    from mia.pipeline import load_index
+
+    return load_index(market_slug)[1]
+
+
+@st.cache_data(show_spinner="Searching…", max_entries=100)
+def search_evidence(
+    market_slug: str,
+    version: float,
+    query: str,
+    company: str | None,
+    sources: tuple[str, ...],
+    k: int,
+    rerank: bool,
+) -> list[dict]:
+    hits = load_evidence_index(market_slug, version).search(
+        query, k=k, company=company, source_types=list(sources) or None, rerank=rerank
+    )
+    return [
+        {"score": hit.score, "retriever": hit.retriever, **hit.chunk.model_dump()} for hit in hits
+    ]
 
 
 def badge(text: str, cls: str) -> str:
@@ -274,30 +310,94 @@ pricing: list[dict] = report.get("pricing", [])
 complaints: list[dict] = report.get("complaints", [])
 clusters: list[dict] = report.get("clusters", [])
 opportunities: list[dict] = report.get("opportunities", [])
+market_gaps = [o for o in opportunities if o.get("kind") != "product_failure"]
+product_failures = [o for o in opportunities if o.get("kind") == "product_failure"]
 weak_signals: list[dict] = report.get("weak_signals", [])
 
 complaint_by_id = {c["id"]: c for c in complaints}
 cluster_by_id = {cl["id"]: cl for cl in clusters}
 
+
+def opportunity_cards(items: list[dict]) -> None:
+    for i, opp in enumerate(items, 1):
+        cl = cluster_by_id.get(opp["cluster_id"], {})
+        kind = opp.get("kind", "")
+        if kind == "product_failure":
+            kind_b = badge("product failure", "badge-failure")
+        elif kind == "unmet_need":
+            kind_b = badge("unmet need", "badge-unmet")
+        else:
+            kind_b = badge("poor execution", "badge-poor")
+        v_b = (
+            badge("✓ verified", "badge-verified")
+            if opp.get("verified")
+            else badge("unverified", "badge-unverified")
+        )
+        bd_str = " · ".join(f"{k} {v:.2f}" for k, v in opp.get("score_breakdown", {}).items())
+        quotes = ""
+        for eid in opp.get("evidence", [])[:5]:
+            ev = complaint_by_id.get(eid)
+            if ev:
+                ev_src_type = ev.get("source_type", "")
+                src = SOURCE_LABEL.get(ev_src_type, ev_src_type)
+                who = f"{ev.get('company', '')} · " if ev.get("company") else ""
+                quotes += (
+                    f'<div class="quote-block">"{esc(short(ev["quote"], 220))}"'
+                    f'<br><small style="color:#6e7681">{esc(who)}{esc(src)}'
+                    f"{source_link(ev.get('url'))}</small></div>"
+                )
+        n_comp = len(competitors) or 1
+        if kind == "product_failure":
+            spread = f"🏢 reported for {len(cl.get('companies', []))}/{n_comp} competitors"
+        else:
+            spread = f"🏢 {opp['coverage'] * n_comp:g}/{n_comp} competitors claim it"
+        st.markdown(
+            f"""<div class="opp-card">
+<div class="opp-title">{i}. {esc(opp["title"])}</div>
+<div class="opp-score">{opp["score"]:.1f} / 10</div>
+{kind_b} {v_b}<br><br>
+<span class="stat-pill">📊 {cl.get("share", 0):.0%} of complaints</span>
+<span class="stat-pill">📄 {cl.get("distinct_docs", 0)} documents</span>
+<span class="stat-pill">⚠️ severity {cl.get("mean_severity", 0):.1f}/3</span>
+<span class="stat-pill">{spread}</span>
+<br><small style="color:#8b949e;font-size:.78rem">{esc(bd_str)}</small>
+<p style="color:#c9d1d9;font-size:.9rem;margin-top:.6rem">{esc(opp.get("rationale", ""))}</p>
+{quotes}
+</div>""",
+            unsafe_allow_html=True,
+        )
+
+
 # ── KPIs ─────────────────────────────────────────────────────────────────────
 st.markdown(f"# 🔭 {market}")
-c1, c2, c3, c4, c5 = st.columns(5)
+c1, c2, c3, c4, c5, c6 = st.columns(6)
 c1.metric("Competitors", len(competitors))
 c2.metric("Complaints", len(complaints))
 c3.metric("Clusters", len(clusters))
-c4.metric("Ranked Gaps", len(opportunities))
+c4.metric("Ranked Gaps", len(market_gaps))
+c5.metric("Product failures", len(product_failures))
 vr = stats.get("verification_rate")
-c5.metric("Verification rate", f"{vr:.0%}" if vr is not None else "—")
+c6.metric("Verification rate", f"{vr:.0%}" if vr is not None else "—")
 st.markdown("---")
 
 # ── tabs ───────────────────────────────────────────────────────────────────────
-tab_comp, tab_feat, tab_price, tab_compl, tab_gaps, tab_trace, tab_report = st.tabs(
+(
+    tab_comp,
+    tab_feat,
+    tab_price,
+    tab_compl,
+    tab_gaps,
+    tab_evidence,
+    tab_trace,
+    tab_report,
+) = st.tabs(
     [
         "🏢 Competitors",
         "🔬 Features",
         "💰 Pricing",
         "📣 Complaints",
         "🚀 Gaps",
+        "🔎 Evidence",
         "🕵️ Agent trace",
         "📄 Report",
     ]
@@ -596,7 +696,11 @@ with tab_compl:
                 sc2.metric("Distinct docs", cl["distinct_docs"])
                 sc3.metric("Mean severity", f"{cl['mean_severity']:.1f}")
                 src_labels = " · ".join(SOURCE_LABEL.get(s, s) for s in cl["source_types"])
-                st.caption("Sources: " + src_labels)
+                st.caption(
+                    ("Product failure" if cl.get("category") == "failure" else "Need")
+                    + " · Sources: "
+                    + src_labels
+                )
                 if cl.get("companies"):
                     st.caption("Companies: " + ", ".join(cl["companies"]))
                 shown = 0
@@ -649,14 +753,14 @@ with tab_compl:
 with tab_gaps:
     st.markdown("### Ranked market gaps")
 
-    if not opportunities:
-        st.info("No ranked opportunities in this run. Check weak signals below.")
-    else:
+    if not market_gaps:
+        st.info("No market gap passed the evidence gates in this run. Check weak signals below.")
+    if opportunities:
         try:
             import plotly.graph_objects as go
 
-            opp_names = [o["title"][:40] for o in opportunities]
-            opp_scores = [o["score"] for o in opportunities]
+            opp_names = [o["title"][:40] for o in market_gaps]
+            opp_scores = [o["score"] for o in market_gaps]
             fig6 = go.Figure(
                 go.Bar(
                     x=opp_scores,
@@ -676,12 +780,13 @@ with tab_gaps:
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(22,27,34,1)",
                 margin=dict(t=10, b=20, l=20, r=60),
-                height=max(200, len(opportunities) * 48),
+                height=max(200, len(market_gaps) * 48),
                 xaxis=dict(range=[0, 10.5], title="Score (0–10)"),
                 yaxis=dict(autorange="reversed"),
                 font=dict(family="Inter", color="#c9d1d9"),
             )
-            st.plotly_chart(fig6, width="stretch")
+            if market_gaps:
+                st.plotly_chart(fig6, width="stretch")
         except ImportError:
             pass
 
@@ -689,51 +794,19 @@ with tab_gaps:
         if ver:
             st.caption(
                 f"Verification: {ver.get('opportunities_verified', 0)}/"
-                f"{ver.get('opportunities', 0)} gaps verified · {ver.get('quotes_passed', 0)}/"
+                f"{ver.get('opportunities', 0)} ranked pain points verified · "
+                f"{ver.get('quotes_passed', 0)}/"
                 f"{ver.get('quotes_checked', 0)} quotes passed the verbatim check and the judge"
             )
-        for i, opp in enumerate(opportunities, 1):
-            cl = cluster_by_id.get(opp["cluster_id"], {})
-            kind = opp.get("kind", "")
-            kind_b = (
-                badge("unmet need", "badge-unmet")
-                if kind == "unmet_need"
-                else badge("poor execution", "badge-poor")
+        opportunity_cards(market_gaps)
+        if product_failures:
+            st.markdown("### Product failures")
+            st.caption(
+                "Things that break for customers across several products. They show where "
+                "today's products fall down, not what's missing from the market, so they are "
+                "ranked apart from the gaps."
             )
-            v_b = (
-                badge("✓ verified", "badge-verified")
-                if opp.get("verified")
-                else badge("unverified", "badge-unverified")
-            )
-            bd_str = " · ".join(f"{k} {v:.2f}" for k, v in opp.get("score_breakdown", {}).items())
-            quotes = ""
-            for eid in opp.get("evidence", [])[:5]:
-                ev = complaint_by_id.get(eid)
-                if ev:
-                    ev_src_type = ev.get("source_type", "")
-                    src = SOURCE_LABEL.get(ev_src_type, ev_src_type)
-                    who = f"{ev.get('company', '')} · " if ev.get("company") else ""
-                    quotes += (
-                        f'<div class="quote-block">"{esc(short(ev["quote"], 220))}"'
-                        f'<br><small style="color:#6e7681">{esc(who)}{esc(src)}'
-                        f"{source_link(ev.get('url'))}</small></div>"
-                    )
-            n_comp = len(competitors) or 1
-            st.markdown(
-                f"""<div class="opp-card">
-<div class="opp-title">{i}. {esc(opp["title"])}</div>
-<div class="opp-score">{opp["score"]:.1f} / 10</div>
-{kind_b} {v_b}<br><br>
-<span class="stat-pill">📊 {cl.get("share", 0):.0%} of complaints</span>
-<span class="stat-pill">📄 {cl.get("distinct_docs", 0)} documents</span>
-<span class="stat-pill">⚠️ severity {cl.get("mean_severity", 0):.1f}/3</span>
-<span class="stat-pill">🏢 {opp["coverage"] * n_comp:g}/{n_comp} competitors claim it</span>
-<br><small style="color:#8b949e;font-size:.78rem">{esc(bd_str)}</small>
-<p style="color:#c9d1d9;font-size:.9rem;margin-top:.6rem">{esc(opp.get("rationale", ""))}</p>
-{quotes}
-</div>""",
-                unsafe_allow_html=True,
-            )
+            opportunity_cards(product_failures)
 
     if weak_signals:
         st.markdown("---")
@@ -747,7 +820,7 @@ with tab_gaps:
             )
         st.markdown("")
 
-    if opportunities:
+    if market_gaps:
         try:
             import plotly.graph_objects as go
 
@@ -764,8 +837,8 @@ with tab_gaps:
                 fig7.add_trace(
                     go.Bar(
                         name=labels_c[ck],
-                        x=[o["title"][:30] for o in opportunities],
-                        y=[o.get("score_breakdown", {}).get(ck, 0) for o in opportunities],
+                        x=[o["title"][:30] for o in market_gaps],
+                        y=[o.get("score_breakdown", {}).get(ck, 0) for o in market_gaps],
                         marker_color=col,
                     )
                 )
@@ -787,7 +860,67 @@ with tab_gaps:
             pass
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 6 – Trace
+# TAB 6 – Evidence explorer
+# ══════════════════════════════════════════════════════════════════════════════
+with tab_evidence:
+    st.markdown("### Evidence explorer")
+    st.caption(
+        "Searches this market's saved evidence with BM25 and embeddings, then a reranker. "
+        "It always reads the market's latest index, which may be newer than an older run."
+    )
+    slug = selected_path.parent.parent.name
+    version = index_version(slug)
+    if version is None:
+        st.info(
+            f"No saved index for {slug}. Run `uv run mia index` for this market, or restore a "
+            "snapshot with `uv run mia snapshot restore`."
+        )
+    else:
+        chunks = load_evidence_index(slug, version).chunks
+        companies = sorted({ch.company for ch in chunks if ch.company})
+        source_types = sorted({ch.source_type for ch in chunks})
+        with st.form("evidence_search"):
+            query = st.text_input(
+                "Search the evidence", placeholder="too expensive for small teams"
+            )
+            f1, f2, f3, f4 = st.columns([2, 3, 2, 1])
+            company = f1.selectbox("Company", ["All", *companies], key="evidence_company")
+            sources = f2.multiselect(
+                "Sources",
+                source_types,
+                format_func=lambda s: SOURCE_LABEL.get(s, s),
+                key="evidence_sources",
+            )
+            k = f3.slider("Results", 5, 30, 10, key="evidence_k")
+            rerank = f4.checkbox("Rerank", value=True, key="evidence_rerank")
+            st.form_submit_button("Search")
+        if query.strip():
+            hits = search_evidence(
+                slug,
+                version,
+                query.strip(),
+                None if company == "All" else company,
+                tuple(sources),
+                k,
+                rerank,
+            )
+            st.caption(f"{len(hits)} passages from {len(chunks)} in the index")
+            if not hits:
+                st.info("Nothing matches this search and these filters.")
+            for hit in hits:
+                src = SOURCE_LABEL.get(hit["source_type"], hit["source_type"])
+                who = f"{hit['company']} · " if hit.get("company") else ""
+                st.markdown(
+                    f'<div class="quote-block" style="font-style:normal">'
+                    f"{esc(short(hit['text'], 700))}"
+                    f'<br><small style="color:#6e7681">{esc(who)}{esc(src)}'
+                    f" · {esc(hit['retriever'])} {hit['score']:.3f}"
+                    f"{source_link(hit.get('url'))}</small></div>",
+                    unsafe_allow_html=True,
+                )
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 7 – Trace
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_trace:
     st.markdown("### Agent trace")
@@ -890,7 +1023,7 @@ with tab_trace:
         st.caption(f"Total trace entries: {len(trace)}")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 7 – Report
+# TAB 8 – Report
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_report:
     report_md = selected_path.parent / "report.md"

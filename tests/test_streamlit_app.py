@@ -1,9 +1,10 @@
-"""Smoke test for the Streamlit app (tasks C11, C12). Skipped unless the `ui` extra is
+"""Smoke test for the Streamlit app (tasks C11, C12, C14). Skipped unless the `ui` extra is
 installed: `uv sync --extra ui`."""
 
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import replace
 from pathlib import Path
 
@@ -51,3 +52,52 @@ def test_trace_filters_by_competitor(run_dir):
     competitor.select("Noted").run()
     assert not at.exception
     assert any("Noted: what each scout did" in m.value for m in at.markdown)
+
+
+def _text(at) -> str:
+    return " ".join(m.value for m in at.markdown)
+
+
+def _evidence_search(at, query: str):
+    next(t for t in at.text_input if t.label == "Search the evidence").set_value(query)
+    return next(b for b in at.button if b.label == "Search").click().run()
+
+
+def test_evidence_explorer_searches_the_saved_index(run_dir):
+    at = AppTest.from_file(str(APP), default_timeout=60).run()
+    assert "Evidence explorer" in _text(at)
+    assert "quote-block" not in _text(at).split("Evidence explorer")[1].split("Agent trace")[0]
+    at = _evidence_search(at, "price expensive")
+    assert not at.exception
+    assert any("passages from" in c.value for c in at.caption)
+    found = _text(at).split("Evidence explorer")[1].split("Agent trace")[0]
+    assert "quote-block" in found and "rerank" in found
+
+
+def test_evidence_filters_narrow_the_results(run_dir):
+    at = AppTest.from_file(str(APP), default_timeout=60).run()
+    next(sb for sb in at.selectbox if sb.label == "Company").select("Noted")
+    next(c for c in at.checkbox if c.label == "Rerank").uncheck()
+    at = _evidence_search(at, "price expensive")
+    assert not at.exception
+    found = _text(at).split("Evidence explorer")[1].split("Agent trace")[0]
+    assert "Noted · " in found and "Scribely · " not in found and "hybrid" in found
+
+
+def test_evidence_says_so_without_an_index(run_dir, settings):
+    shutil.rmtree(settings.data_dir / "indexes")
+    at = AppTest.from_file(str(APP), default_timeout=60).run()
+    assert not at.exception
+    assert any("No saved index" in m.value for m in at.info)
+
+
+def test_product_failures_are_shown_apart_from_gaps(run_dir):
+    run_json = run_dir / "run.json"
+    data = json.loads(run_json.read_text())
+    data["opportunities"][0]["kind"] = "product_failure"
+    data["opportunities"][0]["title"] = "Crashes on launch"
+    run_json.write_text(json.dumps(data))
+    text = _text(AppTest.from_file(str(APP), default_timeout=60).run())
+    gaps, failures = text.split("Product failures")[0], text.split("### Product failures")[1]
+    assert "Crashes on launch" not in gaps
+    assert "Crashes on launch" in failures and "product failure" in failures
