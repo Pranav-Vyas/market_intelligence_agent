@@ -5,6 +5,9 @@
 Compares linkage methods and distance thresholds, then the LLM refinement step, against
 gold/complaint_themes_*.json with B-cubed precision, recall and F1. The themes were drafted with
 AI assistance from the summaries alone; spot-check them before quoting the numbers.
+
+It then re-ranks the run's pain points under other score weights and evidence gates, using the
+breakdown stored in run.json, to show how much the ranking depends on those choices.
 """
 
 from __future__ import annotations
@@ -80,6 +83,60 @@ def complete_linkage(vectors: np.ndarray, threshold: float) -> list[list[int]]:
     return [m for m in members if m]
 
 
+WEIGHTS = {
+    "default (F .35 S .25 G .25 E .15)": {"F": 0.35, "S": 0.25, "G": 0.25, "E": 0.15},
+    "more gap (F .25 S .25 G .35 E .15)": {"F": 0.25, "S": 0.25, "G": 0.35, "E": 0.15},
+    "more frequency (F .45 S .2 G .2 E .15)": {"F": 0.45, "S": 0.2, "G": 0.2, "E": 0.15},
+    "more severity (F .25 S .35 G .25 E .15)": {"F": 0.25, "S": 0.35, "G": 0.25, "E": 0.15},
+    "equal (.25 each)": {"F": 0.25, "S": 0.25, "G": 0.25, "E": 0.25},
+}
+GATES = {
+    "default (5 complaints, 3 docs, 2 companies, 2 sources)": (5, 3, 2, 2, 0),
+    "no company gate": (5, 3, 1, 2, 0),
+    "no source gate": (5, 3, 2, 1, 0),
+    "2 sources or 3 companies": (5, 3, 2, 2, 3),
+    "stricter (8 complaints, 5 docs)": (8, 5, 2, 2, 0),
+}
+
+
+def sensitivity(report: dict) -> dict:
+    """Market gaps under other weights and gates. Weak signals have a breakdown too, so a gate
+    change can rank them; their quotes wouldn't have been verified yet."""
+    clusters = {c["id"]: c for c in report["clusters"]}
+    needs = [
+        o
+        for o in report["opportunities"] + report["weak_signals"]
+        if o["kind"] != "product_failure"
+    ]
+
+    def passes(o: dict, gate: tuple[int, int, int, int, int]) -> bool:
+        cl = clusters[o["cluster_id"]]
+        complaints, docs, companies, sources, or_companies = gate
+        corroborated = len(cl["source_types"]) >= sources or (
+            or_companies and len(cl["companies"]) >= or_companies
+        )
+        return (
+            len(cl["complaint_ids"]) >= complaints
+            and cl["distinct_docs"] >= docs
+            and len(cl["companies"]) >= companies
+            and corroborated
+        )
+
+    default_gate = GATES["default (5 complaints, 3 docs, 2 companies, 2 sources)"]
+    by_weights = {}
+    for name, w in WEIGHTS.items():
+        kept = [o for o in needs if passes(o, default_gate)]
+        kept.sort(key=lambda o: -sum(w[k] * v for k, v in o["score_breakdown"].items()))
+        by_weights[name] = [o["title"] for o in kept]
+    by_gates = {}
+    default = WEIGHTS["default (F .35 S .25 G .25 E .15)"]
+    for name, gate in GATES.items():
+        kept = [o for o in needs if passes(o, gate)]
+        kept.sort(key=lambda o: -sum(default[k] * v for k, v in o["score_breakdown"].items()))
+        by_gates[name] = [o["title"] for o in kept]
+    return {"weights": by_weights, "gates": by_gates}
+
+
 def main() -> None:
     runtime.configure()
     s = runtime.settings()
@@ -131,6 +188,7 @@ def main() -> None:
         "rows": rows,
         "category_agreement": round(agree / total, 3) if total else None,
         "refined_clusters": detail,
+        "sensitivity": sensitivity(report),
     }
     out = HERE / "results"
     (out / "clustering_tuning.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
@@ -153,6 +211,13 @@ def main() -> None:
         " of the complaints the refinement kept.",
         "",
     ]
+    for title, rows_of in (
+        ("Market gaps under other score weights", results["sensitivity"]["weights"]),
+        ("Market gaps under other evidence gates", results["sensitivity"]["gates"]),
+    ):
+        lines += [f"## {title}", "", "| Setting | Ranked, best first |", "|---|---|"]
+        lines += [f"| {name} | {'; '.join(titles) or 'none'} |" for name, titles in rows_of.items()]
+        lines.append("")
     (out / "clustering_tuning.md").write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines))
     for d in detail:

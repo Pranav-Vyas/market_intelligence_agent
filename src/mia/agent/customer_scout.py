@@ -28,8 +28,8 @@ MAX_EMPTY_SEARCHES = 2  # public complaints about a small product run out quickl
 SOURCE_HELP = {
     "hn": "Hacker News comments; the query is searched next to the product name, so short, "
     "common words find the most",
-    "app_store": "the app's recent low-rated reviews; a query only keeps those that use its words, "
-    "so it can't find more once the default search returned 0",
+    "app_store": "the app's low-rated reviews; a query finds reviews that use its words, including "
+    "ones the default search didn't keep. A product with no app returns nothing",
 }
 
 SYSTEM = """You steer a research agent that collects public customer complaints about one
@@ -41,8 +41,8 @@ Each step, choose one action:
 - "done": when more searches are unlikely to find new complaints.
 
 Each search costs quota, so choose "done" rather than guess:
-- A source that returned 0 new documents for its default queries has nothing more to give.
-- After a search that found nothing, change the words completely or stop.
+- If "Tried so far" shows a source's default queries found 0, skip that source.
+- After a search that found nothing, try the other source or completely different words.
 Never repeat a query you already tried on the same source. "reason" is one short sentence."""
 
 
