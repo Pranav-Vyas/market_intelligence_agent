@@ -1,0 +1,96 @@
+[
+  {
+    "market": "AI calendar / scheduling assistants",
+    "gold": [
+      "Motion",
+      "Reclaim.ai",
+      "Clockwise",
+      "Calendly",
+      "Cal.com",
+      "SavvyCal",
+      "Vimcal",
+      "Akiflow",
+      "Morgen",
+      "Trevor AI",
+      "Doodle",
+      "Acuity Scheduling"
+    ],
+    "found": [
+      "Motion",
+      "Reclaim.ai",
+      "Akiflow",
+      "Trevor AI",
+      "Calendly",
+      "Morgen",
+      "Vimcal",
+      "Clockwise",
+      "Kronologic"
+    ],
+    "missed": [
+      "Cal.com",
+      "SavvyCal",
+      "Doodle",
+      "Acuity Scheduling"
+    ],
+    "not_in_gold": [
+      "Kronologic"
+    ],
+    "recall_at_gold_size": 0.667,
+    "recall_all_found": 0.667,
+    "recall_at_5": 0.417,
+    "recall_at_8": 0.667,
+    "recall_at_10": 0.667,
+    "precision_of_first_8": 1.0
+  },
+  {
+    "market": "AI meeting assistants",
+    "gold": [
+      "Otter.ai",
+      "Fireflies.ai",
+      "Fathom",
+      "Granola",
+      "tl;dv",
+      "Read.ai",
+      "Avoma",
+      "Fellow",
+      "MeetGeek",
+      "Notta",
+      "Sembly",
+      "Krisp",
+      "Bluedot"
+    ],
+    "found": [
+      "Otter",
+      "Fathom",
+      "Fireflies",
+      "Avoma",
+      "tl;dv",
+      "Krisp",
+      "Granola",
+      "Read.ai",
+      "Grain",
+      "Sybill",
+      "Gong",
+      "Modjo"
+    ],
+    "missed": [
+      "Fellow",
+      "MeetGeek",
+      "Notta",
+      "Sembly",
+      "Bluedot"
+    ],
+    "not_in_gold": [
+      "Grain",
+      "Sybill",
+      "Gong",
+      "Modjo"
+    ],
+    "recall_at_gold_size": 0.615,
+    "recall_all_found": 0.615,
+    "recall_at_5": 0.385,
+    "recall_at_8": 0.615,
+    "recall_at_10": 0.615,
+    "precision_of_first_8": 1.0
+  }
+]

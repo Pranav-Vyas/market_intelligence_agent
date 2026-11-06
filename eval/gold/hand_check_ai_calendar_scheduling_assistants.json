@@ -1,0 +1,27 @@
+{
+  "market": "AI calendar / scheduling assistants",
+  "run": "20261107-000551",
+  "judged_by": "AI-drafted from the run's quotes, not yet confirmed by a person",
+  "clustering": {
+    "0 ipad app buggy syncing": "ok",
+    "1 missing a lot of features": "ok",
+    "2 app is buggy for changing timings": "wrong: about editing times in the app, not calendar sync",
+    "3 poor customer service experience": "ok",
+    "4 new app version is buggy": "wrong: the quote is too vague to be a crash",
+    "5 schedules appointments on blocked days": "ok",
+    "6 terrible customer service run by ai": "ok",
+    "7 app out of sync with desktop": "ok",
+    "8 ios app is slow and freezes": "ok",
+    "9 does not sync with iphone calendar": "ok",
+    "10 lack of human customer service": "ok",
+    "11 double charged and unable to cancel": "ok",
+    "12 cannot edit meeting notes in app": "wrong: a missing edit feature, not a tracking error",
+    "13 does not sync in background": "ok",
+    "14 mobile app lacks search feature": "ok",
+    "15 constant login issues preventing help": "ok",
+    "16 app crashes constantly after redesign": "ok",
+    "17 mobile app missing features": "ok",
+    "18 overpriced with limited features": "ok",
+    "19 ugly design and difficult navigation": "ok"
+  }
+}
