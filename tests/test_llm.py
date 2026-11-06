@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 from pydantic import BaseModel
 
@@ -142,7 +144,6 @@ def test_non_retryable_smart_errors_do_not_fall_back(settings):
 
 
 def test_throttle_spaces_requests(settings):
-    from dataclasses import replace
 
     now = [0.0]
     sleeps: list[float] = []
@@ -159,7 +160,6 @@ def test_throttle_spaces_requests(settings):
 
 
 def test_missing_model_setting_explains_fix(settings):
-    from dataclasses import replace
 
     llm = LLM(replace(settings, model_bulk=""), backends={"fake": FakeBackend()})
     with pytest.raises(LLMConfigError, match="MIA_MODEL_BULK"):
@@ -195,7 +195,6 @@ def test_invalid_thinking_level_is_rejected(llm):
 
 
 def test_collection_may_use_only_its_share_of_the_budget(settings):
-    from dataclasses import replace
 
     from mia.llm import COLLECTION
 
@@ -277,3 +276,94 @@ def test_a_silent_connection_times_out_and_can_be_retried(monkeypatch):
         with pytest.raises(httpx.TimeoutException) as caught:
             backend.generate("any-model", llm_module.LLMRequest("hello"))
     assert backend.is_retryable(caught.value)
+
+
+def _down_except(*working: str):
+    """A backend whose listed models answer and whose others always give 503-like errors."""
+
+    class Backend(FakeBackend):
+        def generate(self, model, req):
+            if model not in working:
+                self.calls.append({"model": model, "prompt": req.prompt})
+                raise TransientError()
+            return super().generate(model, req)
+
+    return Backend(responder=lambda req: '{"name": "pricing", "severity": 2}')
+
+
+@pytest.fixture
+def with_backup(settings):
+    return replace(settings, model_bulk_fallback="fake/backup-model")
+
+
+def test_unavailable_bulk_model_falls_back_to_the_backup(with_backup):
+    backend = _down_except("backup-model")
+    llm = LLM(with_backup, backends={"fake": backend}, sleep=lambda s: None)
+    assert llm.extract("x", schema=Item).severity == 2
+    assert [c["model"] for c in backend.calls] == ["bulk-model"] * MAX_ATTEMPTS + ["backup-model"]
+    assert llm.usage.backup_calls == 1
+    assert llm.usage.fallbacks == 0
+    assert llm.usage.as_dict()["requests_by_model"] == {"fake/backup-model": 1}
+
+
+def test_smart_falls_through_bulk_to_the_backup(with_backup):
+    backend = _down_except("backup-model")
+    llm = LLM(with_backup, backends={"fake": backend}, sleep=lambda s: None)
+    assert llm.extract("x", schema=Item, model="smart").severity == 2
+    used = [c["model"] for c in backend.calls]
+    assert used == (
+        ["smart-model"] * MAX_ATTEMPTS + ["bulk-model"] * MAX_ATTEMPTS + ["backup-model"]
+    )
+    assert (llm.usage.fallbacks, llm.usage.backup_calls) == (1, 1)
+
+
+def test_a_down_bulk_model_is_skipped_for_the_rest_of_the_run(with_backup):
+    backend = _down_except("backup-model")
+    llm = LLM(with_backup, backends={"fake": backend}, sleep=lambda s: None)
+    llm.extract("first", schema=Item)
+    backend.calls.clear()
+    llm.extract("second", schema=Item)
+    assert [c["model"] for c in backend.calls] == ["backup-model"]
+    assert llm.usage.backup_calls == 2
+
+
+def test_everything_down_still_reports_unavailable(with_backup):
+    backend = _down_except()
+    llm = LLM(with_backup, backends={"fake": backend}, sleep=lambda s: None)
+    with pytest.raises(LLMUnavailable):
+        llm.extract("first", schema=Item)
+    with pytest.raises(LLMUnavailable):
+        llm.extract("second", schema=Item)
+    assert backend.calls[-1]["model"] == "backup-model"  # the last link is always tried
+
+
+def test_a_healthy_bulk_model_never_touches_the_backup(with_backup):
+    backend = _down_except("bulk-model")
+    llm = LLM(with_backup, backends={"fake": backend}, sleep=lambda s: None)
+    llm.extract("x", schema=Item)
+    assert [c["model"] for c in backend.calls] == ["bulk-model"]
+    assert llm.usage.backup_calls == 0
+
+
+def test_offline_reads_the_cached_backup_answer(with_backup):
+    live = LLM(with_backup, backends={"fake": _down_except("backup-model")}, sleep=lambda s: None)
+    live.extract("x", schema=Item)
+    offline = LLM(with_backup, offline=True, backends={"fake": FakeBackend()})
+    assert offline.extract("x", schema=Item).severity == 2
+    assert offline.usage.requests == 0
+    assert offline.usage.backup_calls == 1
+
+
+def test_the_backup_uses_the_bulk_thinking_level(with_backup):
+    backend = _down_except("backup-model")
+    llm = LLM(with_backup, backends={"fake": backend}, sleep=lambda s: None)
+    llm.extract("x", schema=Item, model="smart")
+    assert [c for c in backend.calls if c["model"] == "backup-model"][0]["thinking"] == "low"
+
+
+def test_a_named_model_never_falls_back(with_backup):
+    backend = _down_except("backup-model")
+    llm = LLM(with_backup, backends={"fake": backend}, sleep=lambda s: None)
+    with pytest.raises(LLMUnavailable):
+        llm.extract("x", schema=Item, model="fake/bulk-model")
+    assert llm.usage.backup_calls == 0

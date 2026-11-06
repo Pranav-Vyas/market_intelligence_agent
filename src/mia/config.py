@@ -30,6 +30,8 @@ class Settings:
     # LLM: model strings are "<provider>/<model-id>", e.g. "gemini/<id from `mia models`>".
     model_bulk: str = field(default_factory=lambda: _env("MIA_MODEL_BULK"))
     model_smart: str = field(default_factory=lambda: _env("MIA_MODEL_SMART"))
+    # Answers when the bulk model stays unavailable. Empty means no backup.
+    model_bulk_fallback: str = field(default_factory=lambda: _env("MIA_MODEL_BULK_FALLBACK"))
     # Thinking level per alias: "minimal" | "low" | "medium" | "high" (Gemini 3 models).
     thinking_bulk: str = field(default_factory=lambda: _env("MIA_THINKING_BULK", "low"))
     thinking_smart: str = field(default_factory=lambda: _env("MIA_THINKING_SMART", "medium"))

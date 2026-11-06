@@ -93,3 +93,10 @@ def test_restore_command_lists_settings_to_change(made, elsewhere):
     assert result.exit_code == 0, result.output
     assert "MIA_MODEL_SMART=fake/smart-model" in result.output
     assert "MIA_MODEL_BULK" not in result.output
+
+
+def test_a_snapshot_made_before_the_backup_setting_still_matches(settings):
+    # older manifests don't name MIA_MODEL_BULK_FALLBACK, and only named settings are compared
+    current = replace(settings, model_bulk_fallback="fake/backup-model")
+    old = {"settings": {"MIA_MODEL_BULK": current.model_bulk}}
+    assert snapshot.mismatches(old, current) == {}

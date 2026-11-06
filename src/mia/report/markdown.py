@@ -369,6 +369,11 @@ def _method(report: MarketReport) -> list[str]:
         f"{llm.get('input_tokens', 0)} input / {llm.get('output_tokens', 0)} output tokens",
         f"- Runtime: {stats.get('runtime_s', 0):.1f} s",
     ]
+    if llm.get("backup_calls"):
+        out.append(
+            f"- {llm['backup_calls']} calls were answered by the backup model, because the bulk "
+            "model was unavailable"
+        )
     if llm.get("fallbacks"):
         out.append(f"- {llm['fallbacks']} calls fell back from the smart to the bulk model")
     warnings = stats.get("warnings") or []
