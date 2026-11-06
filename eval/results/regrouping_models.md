@@ -19,3 +19,19 @@ small sample, and the themes are AI-drafted.
 
 **Smart model: gemini-3.6-flash.** It answered every request that day, while 3.8 answered none. Both
 allow about 20 requests a day, which is enough for the few calls that still use the smart model.
+
+## Backup model: gemini-3.1-flash-lite
+
+Run on 2026-11-06 with the same complaints, three tries each, both models at low thinking.
+
+| Complaints | gemini-3.5-flash-lite | gemini-3.1-flash-lite |
+|---|---|---|
+| 243 (Day 6 run) | 0.583, 0.585, 0.585 | 0.624, 0.652, 0.574 |
+| 229 (Day 7 run) | 0.565, 0.501, 0.547 | 0.526, 0.501, 0.592 |
+| Purity of clusters with 5 or more complaints | 0.72–0.81 | 0.57–0.74 |
+| Complaints in those clusters | 122–178 | 160–227 |
+
+3.1 places more complaints but mixes more problems in a group, so its F1 is about the same. That's
+good enough for a backup, not a reason to switch. It answered 40 of 40 tiny requests with no 503s
+and allows 15 requests a minute; its daily limit wasn't reached.
+
