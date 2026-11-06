@@ -1,0 +1,19 @@
+{
+  "market": "AI calendar / scheduling assistants",
+  "notes": "AI-drafted from general knowledge before discovery ever ran on this market, so it isn't shaped by the results. Review it. Platform-bundled tools are left out, as in the demo market.",
+  "include_platform_bundled": false,
+  "competitors": [
+    "Motion",
+    "Reclaim.ai",
+    "Clockwise",
+    "Calendly",
+    "Cal.com",
+    "SavvyCal",
+    "Vimcal",
+    "Akiflow",
+    "Morgen",
+    "Trevor AI",
+    "Doodle",
+    "Acuity Scheduling"
+  ]
+}
