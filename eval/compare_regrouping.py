@@ -1,6 +1,7 @@
 """Does a stronger model regroup complaints better? (task B13)
 
-    MIA_DATA_DIR=<scratch dir> uv run python eval/compare_regrouping.py <run.json> ...
+    MIA_DATA_DIR=<scratch dir> uv run python eval/compare_regrouping.py <run.json> ... \\
+        [--model gemini/<id>:<thinking> ...]
 
 Runs the regrouping step several times per model on each run's complaints and prints B-cubed F1
 against gold/complaint_themes_*.json. Prompts vary slightly so each try gets its own answer. Use a
@@ -10,6 +11,7 @@ Each try is a real request, and Flash models allow only about 20 a day.
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -47,9 +49,14 @@ def _on_model(extract, model: str, thinking: str, attempt: int):
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("runs", nargs="+")
+    parser.add_argument("--model", action="append", help="gemini/<id>:<thinking>; default: all")
+    args = parser.parse_args()
+    configs = [tuple(m.rsplit(":", 1)) for m in args.model] if args.model else CONFIGS
     runtime.configure()
     extract = runtime.llm().extract
-    for run in sys.argv[1:]:
+    for run in args.runs:
         report = json.loads(Path(run).read_text(encoding="utf-8"))
         complaints = [Complaint.model_validate(c) for c in report["complaints"]]
         universe = [c.summary for c in complaints]
@@ -60,7 +67,7 @@ def main() -> None:
             f"\n{run}: seeds alone",
             tc.describe([[universe[i] for i in g] for g in indices], universe),
         )
-        for model, thinking in CONFIGS:
+        for model, thinking in configs:
             for attempt in range(TRIES):
                 runtime.llm().extract = _on_model(extract, model, thinking, attempt)
                 warned = len(runtime.warnings())

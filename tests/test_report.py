@@ -226,3 +226,8 @@ def test_method_lists_agent_rounds_and_research_results():
     md = render(_report(stats=stats))
     assert "- Agents: 1 discovery rounds, 2 rounds of follow-up research" in md
     assert "  - 'X' weak 5.0 → 'X' ranked 6.0 (+3), CHANGED" in md
+
+
+def test_method_says_when_the_backup_model_answered():
+    md = render(_report(stats={"llm": {"backup_calls": 3}}))
+    assert "- 3 calls were answered by the backup model" in md

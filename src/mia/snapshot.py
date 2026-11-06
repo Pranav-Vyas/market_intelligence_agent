@@ -36,6 +36,7 @@ def settings_to_match(s: Settings) -> dict[str, str]:
     return {
         "MIA_MODEL_BULK": s.model_bulk,
         "MIA_MODEL_SMART": s.model_smart,
+        "MIA_MODEL_BULK_FALLBACK": s.model_bulk_fallback,
         "MIA_THINKING_BULK": s.thinking_bulk,
         "MIA_THINKING_SMART": s.thinking_smart,
         "MIA_EMBED_MODEL": s.embed_model,

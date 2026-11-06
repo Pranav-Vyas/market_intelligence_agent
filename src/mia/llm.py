@@ -12,9 +12,10 @@ Never call a provider SDK directly from other modules. Use `llm()` from `mia.run
     text = llm().complete("Summarize ...", model="smart")
     result = llm().extract("Extract ...", schema=MySchema)   # validated Pydantic instance
 
-Fallback: when the smart model stays unavailable after every retry (or, offline, has no cached
-answer), the call is made with the bulk model instead and `usage.fallbacks` counts it. Free-tier
-Flash models are often overloaded; Flash-Lite rarely is.
+Fallback: when a model stays unavailable after every retry (or, offline, has no cached answer),
+the call moves down the chain smart → bulk → MIA_MODEL_BULK_FALLBACK, and `usage` counts it. A model
+that stays unavailable is skipped for the rest of the run. Free-tier models get overloaded, usually
+not all at once. A call that names a full model ID never falls back.
 
 Thinking: Gemini 3 models think before answering. Each alias has a default level from .env
 (MIA_THINKING_BULK, MIA_THINKING_SMART); pass `thinking="minimal" | "low" | "medium" | "high"` to
@@ -167,6 +168,7 @@ class Usage:
     input_tokens: int = 0
     output_tokens: int = 0
     fallbacks: int = 0  # smart-model calls answered by the bulk model
+    backup_calls: int = 0  # calls answered by MIA_MODEL_BULK_FALLBACK
     by_model: dict[str, int] = field(default_factory=dict)
     by_phase: dict[str, int] = field(default_factory=dict)  # e.g. {"collection": 12}
 
@@ -177,6 +179,7 @@ class Usage:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "fallbacks": self.fallbacks,
+            "backup_calls": self.backup_calls,
             "requests_by_model": dict(self.by_model),
             "requests_by_phase": dict(self.by_phase),
         }
@@ -258,23 +261,42 @@ class LLM:
     def _with_fallback(
         self, model: str, thinking: str | None, run: Callable[[str, str | None], R]
     ) -> R:
-        full_model, default_thinking = self._resolve(model)
-        bulk = self.settings.model_bulk
-        can_fall_back = model == "smart" and bool(bulk) and bulk != full_model
-        if not (can_fall_back and full_model in self._down):
+        chain = self._chain(model)
+        usable = [link for link in chain if link[0] not in self._down] or chain[-1:]
+        for position, (full_model, default_thinking) in enumerate(usable):
+            self._count_fallback(full_model, chain[0][0])
             try:
                 return run(full_model, self._thinking(thinking, default_thinking))
             except (LLMUnavailable, LLMCacheMiss) as err:
-                if not can_fall_back:
+                if position == len(usable) - 1:
                     raise
                 if isinstance(err, LLMUnavailable):  # skip it for the rest of the run
                     with self._lock:
                         self._down.add(full_model)
-                    log.warning("%s unavailable (%s); using %s from now on", full_model, err, bulk)
+                    log.warning("%s unavailable (%s); skipping it from now on", full_model, err)
+        raise AssertionError("unreachable")
+
+    def _chain(self, model: str) -> list[tuple[str, str | None]]:
+        """The models to try in order, each with its default thinking level."""
+        chain = [self._resolve(model)]
+        s = self.settings
+        if model == "smart" and s.model_bulk:
+            chain.append(self._resolve("bulk"))
+        if model in ("smart", "bulk") and s.model_bulk_fallback:
+            chain.append((s.model_bulk_fallback, s.thinking_bulk or None))
+        unique: dict[str, str | None] = {}
+        for name, level in chain:
+            unique.setdefault(name, level)
+        return list(unique.items())
+
+    def _count_fallback(self, used: str, asked: str) -> None:
+        if used == asked:
+            return
         with self._lock:
-            self.usage.fallbacks += 1
-        bulk_model, bulk_thinking = self._resolve("bulk")
-        return run(bulk_model, self._thinking(thinking, bulk_thinking))
+            if used == self.settings.model_bulk_fallback:
+                self.usage.backup_calls += 1
+            else:
+                self.usage.fallbacks += 1
 
     def _resolve(self, model: str) -> tuple[str, str | None]:
         """Return the full model string and its default thinking level."""
