@@ -46,6 +46,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 }
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stMarkdown p { color: #8b949e; font-size: 0.82rem; }
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p { color: #b1bac4; }
 [data-testid="metric-container"] {
     background: #161b22;
     border: 1px solid #30363d;
@@ -289,9 +290,9 @@ with st.sidebar:
     market_names = {
         slug: load_report(str(paths[0])).get("market", slug) for slug, paths in markets.items()
     }
-    market_slug = st.selectbox("**Market**", list(markets), format_func=market_names.get, index=0)
+    market_slug = st.selectbox("Market", list(markets), format_func=market_names.get, index=0)
     run_paths = markets[market_slug]
-    selected_path = st.selectbox("**Run**", run_paths, format_func=run_label, index=0)
+    selected_path = st.selectbox("Run", run_paths, format_func=run_label, index=0)
     report = load_report(str(selected_path))
 
     st.markdown("---")
