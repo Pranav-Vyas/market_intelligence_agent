@@ -1,4 +1,4 @@
-"""Smoke test for the Streamlit app (tasks C11, C12, C14). Skipped unless the `ui` extra is
+"""Smoke test for the Streamlit app (tasks C11, C12, C14, C16). Skipped unless the `ui` extra is
 installed: `uv sync --extra ui`."""
 
 from __future__ import annotations
@@ -42,8 +42,8 @@ def test_app_shows_a_graph_run_without_errors(run_dir):
     assert "Ranked market gaps" in text and "Agent trace" in text
     assert "<script>alert(1)</script>" not in text  # scraped text is escaped
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in text
-    picker = next(sb for sb in at.selectbox if "Select a run" in sb.label)
-    assert picker.options[0].startswith("ai-meeting-assistants")
+    market = next(sb for sb in at.selectbox if "Market" in sb.label)
+    assert market.value == "ai-meeting-assistants"
 
 
 def test_trace_filters_by_competitor(run_dir):
@@ -101,3 +101,43 @@ def test_product_failures_are_shown_apart_from_gaps(run_dir):
     gaps, failures = text.split("Product failures")[0], text.split("### Product failures")[1]
     assert "Crashes on launch" not in gaps
     assert "Crashes on launch" in failures and "product failure" in failures
+
+
+@pytest.fixture
+def two_markets(run_dir):
+    other = run_dir.parents[1] / "ai-calendar-assistants" / "20261101-100000"
+    other.mkdir(parents=True)
+    data = json.loads((run_dir / "run.json").read_text())
+    data["market"] = "AI calendar assistants"
+    (other / "run.json").write_text(json.dumps(data))
+    (run_dir.parent / "20260101-090000").mkdir()
+    (run_dir.parent / "20260101-090000" / "run.json").write_text((run_dir / "run.json").read_text())
+    return other
+
+
+def test_the_market_picker_switches_market_and_its_runs(two_markets):
+    at = AppTest.from_file(str(APP), default_timeout=60).run()
+    market = next(sb for sb in at.selectbox if "Market" in sb.label)
+    assert set(market.options) == {"AI meeting assistants", "AI calendar assistants"}
+    market.select("ai-calendar-assistants").run()
+    assert not at.exception
+    assert "# 🔭 AI calendar assistants" in _text(at)
+    run = next(sb for sb in at.selectbox if "Run" in sb.label)
+    assert run.options == ["2026-11-01 10:00"]
+
+
+def test_a_market_lists_its_runs_newest_first(two_markets):
+    at = AppTest.from_file(str(APP), default_timeout=60).run()
+    next(sb for sb in at.selectbox if "Market" in sb.label).select("ai-meeting-assistants").run()
+    run = next(sb for sb in at.selectbox if "Run" in sb.label)
+    assert len(run.options) == 2
+    assert "2026-01-01 09:00" in run.options
+
+
+def test_a_run_with_recovered_problems_says_so(run_dir):
+    run_json = run_dir / "run.json"
+    data = json.loads(run_json.read_text())
+    data["stats"]["warnings"] = ["Complaints: skipped a batch", "Features: Otter left unknown"]
+    run_json.write_text(json.dumps(data))
+    at = AppTest.from_file(str(APP), default_timeout=60).run()
+    assert any("2 recovered problems" in w.value for w in at.warning)

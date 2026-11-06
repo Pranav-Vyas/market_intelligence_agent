@@ -1,6 +1,6 @@
-"""Market Gap Scout browser (tasks C11, C12, C14).
+"""Market Gap Scout browser (tasks C11, C12, C14, C16).
 
-Pick a run → tabs for Competitors / Features / Pricing / Complaints / Gaps / Evidence /
+Pick a market and a run → tabs for Competitors / Features / Pricing / Complaints / Gaps / Evidence /
 Agent trace / Report. The trace can be browsed per scout and per competitor, next to the graph
 diagram. Evidence searches the market's saved hybrid index live.
 
@@ -157,15 +157,23 @@ BUCKET_ORDER = ["free", "pro", "business", "enterprise", "other"]
 MERMAID_JS = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
 
 
-def find_runs() -> list[tuple[str, Path]]:
-    results = []
+def find_markets() -> dict[str, list[Path]]:
+    """Market slug → its run.json files, newest first; the market with the newest run first."""
     if not RUNS_DIR.exists():
-        return results
-    for p in sorted(RUNS_DIR.rglob("run.json"), key=lambda p: p.stat().st_mtime, reverse=True):
-        market_slug = p.parent.parent.name
-        timestamp = p.parent.name
-        results.append((f"{market_slug}  ·  {timestamp}", p))
-    return results
+        return {}
+    newest = sorted(RUNS_DIR.rglob("run.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    markets: dict[str, list[Path]] = {}
+    for path in newest:
+        markets.setdefault(path.parent.parent.name, []).append(path)
+    return markets
+
+
+def run_label(path: Path) -> str:
+    """ "20261105-184252" → "2026-11-05 18:42"."""
+    stamp = path.parent.name
+    if len(stamp) == 15 and stamp[8] == "-":
+        return f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:8]} {stamp[9:11]}:{stamp[11:13]}"
+    return stamp
 
 
 @st.cache_data(show_spinner=False)
@@ -270,17 +278,20 @@ with st.sidebar:
     st.markdown("## 🔭 Market Gap Scout")
     st.markdown("---")
 
-    runs = find_runs()
-    if not runs:
+    markets = find_markets()
+    if not markets:
         st.warning(
             'No completed runs found.\n\nRun `uv run mia run "AI meeting assistants"` first.',
             icon="⚠️",
         )
         st.stop()
 
-    labels = [label for label, _ in runs]
-    choice = st.selectbox("**Select a run**", labels, index=0)
-    selected_path = next(p for lbl, p in runs if lbl == choice)
+    market_names = {
+        slug: load_report(str(paths[0])).get("market", slug) for slug, paths in markets.items()
+    }
+    market_slug = st.selectbox("**Market**", list(markets), format_func=market_names.get, index=0)
+    run_paths = markets[market_slug]
+    selected_path = st.selectbox("**Run**", run_paths, format_func=run_label, index=0)
     report = load_report(str(selected_path))
 
     st.markdown("---")
@@ -296,6 +307,13 @@ with st.sidebar:
     if rt is not None:
         st.caption(f"⏱ {rt:.1f} s runtime")
     st.caption(f"🔧 Engine: {stats.get('engine', 'linear')}")
+    run_warnings = stats.get("warnings") or []
+    if run_warnings:
+        st.warning(
+            f"{len(run_warnings)} recovered problems in this run, so it may be missing evidence. "
+            "See the Report tab.",
+            icon="⚠️",
+        )
     stubs_used = stats.get("stubs") or []
     if stubs_used:
         st.warning(f"⚠️ {len(stubs_used)} stub(s) still active", icon="🧪")
@@ -869,7 +887,7 @@ with tab_evidence:
         "Searches this market's saved evidence with BM25 and embeddings, then a reranker. "
         "It always reads the market's latest index, which may be newer than an older run."
     )
-    slug = selected_path.parent.parent.name
+    slug = market_slug
     version = index_version(slug)
     if version is None:
         st.info(
