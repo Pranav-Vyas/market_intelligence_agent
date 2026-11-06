@@ -1,11 +1,15 @@
 # Evaluation
 
+**Start with [results/summary.md](results/summary.md):** every number from SPEC.md §10.
+
 | File | What |
 |---|---|
 | `gold/competitors_*.json` | Gold competitor lists for discovery recall |
 | `retrieval_queries.jsonl` | 36 retrieval queries with document-level relevance labels (task C8) |
 | `run_retrieval.py` | Recall@10, MRR@10, nDCG@10 for BM25 / dense / hybrid / hybrid+rerank (task C9) |
-| `results/retrieval.{json,md}` | Latest retrieval numbers, per method and per query |
+| `results/retrieval.{json,md,svg}`, `retrieval_chart.py` | Latest retrieval numbers, per method and per query, and their chart |
+| `run_discovery.py`, `results/discovery.{json,md}` | Discovery recall against the gold lists (task B15) |
+| `hand_check.py`, `gold/hand_check_*.json`, `results/hand_check.md` | Hand checks of pricing, feature cells and clustering (tasks B14, B15) |
 | `tune_retrieval.py`, `results/retrieval_tuning.{json,md}` | Chunk size, RRF candidates and rerank depth, one at a time (task C13) |
 | `results/pipeline_runs.json` | Full-run statistics: documents, complaints, LLM requests, runtime |
 | `gold/complaint_themes_*.json` | Each complaint summary's theme, and which themes are failures (task B13) |
@@ -41,6 +45,8 @@ The eval reads the saved index of the demo market offline and never fetches anyt
 - Latency is the median per query on a laptop CPU, after the models have loaded.
 
 **When the corpus changes** (re-collection, new competitors), rebuild the candidate pool and re-judge before comparing numbers. Old labels may point at documents that no longer exist.
+
+**Re-judged 2026-11-07.** Scouts now pick which pages to read, so 12 labeled pages had left the corpus and 17 new ones had joined. 44 labels were removed, and 46 were added by searching the new pages for each fact and reading the matches. The October numbers aren't comparable with these.
 
 ## Retrieval tuning (task C13)
 
@@ -96,13 +102,10 @@ pipeline (92 vs 48) and finds the same complaints. Its gain is 2 more official p
 some coverage judgments. Follow-up research found no new documents on this corpus, though in one
 fresh run it lifted a weak signal to a ranked gap. Treat that as one run, not a measured advantage.
 
-A fresh run makes about 103 LLM calls (92 requests, the rest repeats answered by the cache) in
-11 minutes, against about 164 calls before tuning, on a newly collected corpus each time. It stays
-well inside the cap of 200. Scout decisions now stop when searches run dry, research skips
+A fresh run makes about 98 LLM calls (72 requests, the rest repeats answered by the cache) in
+about 9 minutes, against about 164 calls before tuning, on a newly collected corpus each time. It
+stays well inside the cap of 200. Scout decisions now stop when searches run dry, research skips
 competitors with nothing left, and product failures skip the coverage call.
-
-That fresh run predates moving the scouts to the bulk model, and there's no clean fresh run since
-(below). The move shouldn't change the number of calls, only which model answers them.
 
 **Models.** The free tier allowed 3.5, 3.6, 3.7 and 3.8 Flash about 20 requests a day each on
 2026-11-05, and 3.8 answered none of that day's requests. So the scouts now use the bulk model, and
@@ -114,3 +117,16 @@ until every call succeeded took three passes. A fresh run stopped at discovery t
 in 62 minutes with 40 failed calls, 131 complaints instead of about 260 and no verified quotes. It
 still exited normally and listed the problems in its report. Demo from the snapshot, and check a
 live report's "recovered problems" before trusting it.
+
+## Discovery and hand checks (tasks B14, B15)
+
+```bash
+uv run python eval/run_discovery.py                 # offline, from a run's cache
+uv run python eval/hand_check.py sheet <run.json>   # the items to judge, picked with a fixed seed
+uv run python eval/hand_check.py score              # counts gold/hand_check_*.json
+```
+
+**The verdicts are AI-drafted.** Read the sheet and change anything you disagree with in
+`gold/hand_check_*.json`. Each item was judged against the page text in the saved index, so a right
+answer means the report matches the vendor's own page, not that the vendor's claim is true. An
+"unknown" feature cell counts as right when the company's pages don't mention the feature.

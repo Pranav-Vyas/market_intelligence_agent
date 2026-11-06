@@ -467,5 +467,149 @@
     "runtime_s": 3719.81,
     "warnings": 40,
     "notes": "Not a cost measurement. Flash-Lite 503s stopped the run at discovery twice and then failed 40 calls, so complaint batches, feature rows and every quote check were skipped. The run still exited normally, with its problems listed in the report. Shows what an overload does to a live run."
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-11-07",
+    "task": "Day 8: graph from an empty cache on the final code",
+    "engine": "graph",
+    "run_id": "ai-meeting-assistants-20261107-045645",
+    "competitors": [
+      "Otter.ai",
+      "Fireflies.ai",
+      "Fathom",
+      "Krisp",
+      "Granola",
+      "Avoma",
+      "tl;dv"
+    ],
+    "documents_by_source": {
+      "official": 34,
+      "pricing": 6,
+      "hn": 158,
+      "app_store": 139
+    },
+    "complaint_documents_by_company": {
+      "Otter.ai": 79,
+      "Fireflies.ai": 62,
+      "Fathom": 4,
+      "Krisp": 53,
+      "Granola": 80,
+      "Avoma": 7,
+      "tl;dv": 12
+    },
+    "complaints": 203,
+    "clusters": 20,
+    "ranked_market_gaps": 4,
+    "product_failures": 2,
+    "weak_signals": 14,
+    "verification": {
+      "opportunities": 6,
+      "opportunities_verified": 6,
+      "verification_rate": 1.0,
+      "quotes_checked": 44,
+      "quotes_passed": 41,
+      "quote_pass_rate": 0.932
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 2,
+      "researched": [
+        "after research: 'Features hidden behind paywalls' weak 6.4 → 'Features hidden behind paywalls' weak 6.4 (+0 complaints), unchanged",
+        "after research: 'Mandatory google account login' weak 5.9 → 'Mandatory google account login' weak 5.9 (+0 complaints), unchanged"
+      ]
+    },
+    "llm": {
+      "requests": 72,
+      "cache_hits": 26,
+      "input_tokens": 217865,
+      "output_tokens": 36122,
+      "fallbacks": 0,
+      "backup_calls": 0,
+      "requests_by_model": {
+        "gemini/gemini-3.5-flash-lite": 71,
+        "gemini/gemini-3.6-flash": 1
+      },
+      "requests_by_phase": {
+        "collection": 30
+      }
+    },
+    "runtime_s": 559.91,
+    "warnings": 0,
+    "notes": "The clean fresh cost measurement. Pages and reviews were collected live, so the corpus differs from the snapshot: 7 competitors validated, without Read.ai."
+  },
+  {
+    "market": "AI calendar / scheduling assistants",
+    "date": "2026-11-07",
+    "task": "Day 8: second market, end to end with no market-specific code (A16)",
+    "engine": "graph",
+    "run_id": "ai-calendar-scheduling-assistants-20261107-000551",
+    "competitors": [
+      "Motion",
+      "Reclaim.ai",
+      "Akiflow",
+      "Trevor AI",
+      "Calendly",
+      "Morgen",
+      "Vimcal",
+      "Clockwise"
+    ],
+    "documents_by_source": {
+      "official": 31,
+      "pricing": 8,
+      "hn": 172,
+      "app_store": 150
+    },
+    "complaint_documents_by_company": {
+      "Motion": 65,
+      "Reclaim.ai": 40,
+      "Akiflow": 28,
+      "Trevor AI": 2,
+      "Calendly": 85,
+      "Morgen": 28,
+      "Vimcal": 35,
+      "Clockwise": 39
+    },
+    "complaints": 224,
+    "clusters": 16,
+    "ranked_market_gaps": 2,
+    "product_failures": 9,
+    "weak_signals": 5,
+    "verification": {
+      "opportunities": 11,
+      "opportunities_verified": 11,
+      "verification_rate": 1.0,
+      "quotes_checked": 75,
+      "quotes_passed": 67,
+      "quote_pass_rate": 0.893
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 3,
+      "researched": [
+        "after research: 'Difficult user interface and navigation' weak 3.9 → 'Poor user interface and difficult navigation' weak 4.6 (+2 complaints), CHANGED",
+        "after research: 'Missing calendar integrations and features' weak 3.6 → 'Limited calendar provider support and privacy risks' ranked+verified 7.9 (+9 complaints), CHANGED",
+        "after research: 'Poor user interface and difficult navigation' weak 4.6 → 'Poor user interface and navigation design' weak 4.4 (+1 complaints), CHANGED",
+        "after research: 'Missing basic product features' weak 3.8 → 'Missing basic features and limited functionality' weak 4.1 (+1 complaints), CHANGED"
+      ]
+    },
+    "llm": {
+      "requests": 96,
+      "cache_hits": 18,
+      "input_tokens": 284142,
+      "output_tokens": 47137,
+      "fallbacks": 0,
+      "backup_calls": 0,
+      "requests_by_model": {
+        "gemini/gemini-3.5-flash-lite": 95,
+        "gemini/gemini-3.6-flash": 1
+      },
+      "requests_by_phase": {
+        "collection": 39
+      }
+    },
+    "runtime_s": 944,
+    "warnings": 0,
+    "notes": "The laptop slept for 16,419 s during the run, which is removed from runtime_s here. Research once lifted a calendar-support pain point to a ranked gap (7.9), but the next regrouping dissolved it, so it isn't in the final report."
   }
 ]
