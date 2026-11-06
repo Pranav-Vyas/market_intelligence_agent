@@ -1,7 +1,7 @@
 {
   "market": "AI meeting assistants",
-  "notes": "Starter list from SPEC.md. Edit at the Day 1 kickoff. Decide whether platform-bundled tools (Zoom AI Companion, Copilot in Teams, Gemini in Meet) count, and record the decision here.",
-  "include_platform_bundled": null,
+  "notes": "Starter list from SPEC.md. Platform-bundled tools (Zoom AI Companion, Copilot in Teams, Gemini in Meet) are left out: discovery looks for standalone products, and the bundles have no pricing or review pages of their own. Change this if the team disagrees.",
+  "include_platform_bundled": false,
   "competitors": [
     "Otter.ai",
     "Fireflies.ai",
