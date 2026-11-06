@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" role="img" aria-label="Retrieval quality by method and metric">
+<style>
+.surface { fill: #fcfcfb; }
+.primary { fill: #0b0b0b; }
+.secondary { fill: #52514e; }
+.grid { stroke: #e4e3df; }
+.baseline { stroke: #8a8984; }
+.s1 { fill: #2a78d6; } .s2 { fill: #eb6834; } .s3 { fill: #1baf7a; } .s4 { fill: #eda100; }
+@media (prefers-color-scheme: dark) {
+  .surface { fill: #1a1a19; }
+  .primary { fill: #f0efec; }
+  .secondary { fill: #c3c2b7; }
+  .grid { stroke: #33332f; }
+  .baseline { stroke: #6f6e69; }
+  .s1 { fill: #3987e5; } .s2 { fill: #d95926; } .s3 { fill: #199e70; } .s4 { fill: #c98500; }
+}
+text { font: 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.title { font-size: 14px; font-weight: 600; }
+</style>
+<rect class="surface" width="640" height="340"/>
+<text class="primary title" x="44" y="20">Retrieval quality by method (36 labeled queries)</text>
+<rect class="s1" x="44" y="31" width="10" height="10" rx="2"/>
+<text class="secondary" x="59" y="40">BM25</text>
+<rect class="s2" x="102" y="31" width="10" height="10" rx="2"/>
+<text class="secondary" x="117" y="40">Dense</text>
+<rect class="s3" x="167" y="31" width="10" height="10" rx="2"/>
+<text class="secondary" x="182" y="40">Hybrid</text>
+<rect class="s4" x="239" y="31" width="10" height="10" rx="2"/>
+<text class="secondary" x="254" y="40">Hybrid + rerank</text>
+<line class="baseline" x1="44" x2="624" y1="306" y2="306"/>
+<text class="secondary" x="38" y="310" text-anchor="end">0</text>
+<line class="grid" x1="44" x2="624" y1="242.5" y2="242.5"/>
+<text class="secondary" x="38" y="246.5" text-anchor="end">0.25</text>
+<line class="grid" x1="44" x2="624" y1="179" y2="179"/>
+<text class="secondary" x="38" y="183" text-anchor="end">0.5</text>
+<line class="grid" x1="44" x2="624" y1="115.5" y2="115.5"/>
+<text class="secondary" x="38" y="119.5" text-anchor="end">0.75</text>
+<line class="grid" x1="44" x2="624" y1="52" y2="52"/>
+<text class="secondary" x="38" y="56" text-anchor="end">1</text>
+<path class="s1" d="M89.6667 306V167.76Q89.6667 163.76 93.6667 163.76H109.667Q113.667 163.76 113.667 167.76V306Z"><title>BM25, Recall@10: 0.560</title></path>
+<path class="s2" d="M115.667 306V171.062Q115.667 167.062 119.667 167.062H135.667Q139.667 167.062 139.667 171.062V306Z"><title>Dense, Recall@10: 0.547</title></path>
+<path class="s3" d="M141.667 306V151.25Q141.667 147.25 145.667 147.25H161.667Q165.667 147.25 165.667 151.25V306Z"><title>Hybrid, Recall@10: 0.625</title></path>
+<path class="s4" d="M167.667 306V147.694Q167.667 143.694 171.667 143.694H187.667Q191.667 143.694 191.667 147.694V306Z"><title>Hybrid + rerank, Recall@10: 0.639</title></path>
+<text class="primary" x="179.667" y="138.694" text-anchor="middle">0.64</text>
+<text class="secondary" x="140.667" y="328" text-anchor="middle">Recall@10</text>
+<path class="s1" d="M283 306V114.166Q283 110.166 287 110.166H303Q307 110.166 307 114.166V306Z"><title>BM25, MRR@10: 0.771</title></path>
+<path class="s2" d="M309 306V123.056Q309 119.056 313 119.056H329Q333 119.056 333 123.056V306Z"><title>Dense, MRR@10: 0.736</title></path>
+<path class="s3" d="M335 306V94.1Q335 90.1 339 90.1H355Q359 90.1 359 94.1V306Z"><title>Hybrid, MRR@10: 0.850</title></path>
+<path class="s4" d="M361 306V92.576Q361 88.576 365 88.576H381Q385 88.576 385 92.576V306Z"><title>Hybrid + rerank, MRR@10: 0.856</title></path>
+<text class="primary" x="373" y="83.576" text-anchor="middle">0.86</text>
+<text class="secondary" x="334" y="328" text-anchor="middle">MRR@10</text>
+<path class="s1" d="M476.333 306V152.52Q476.333 148.52 480.333 148.52H496.333Q500.333 148.52 500.333 152.52V306Z"><title>BM25, nDCG@10: 0.620</title></path>
+<path class="s2" d="M502.333 306V162.68Q502.333 158.68 506.333 158.68H522.333Q526.333 158.68 526.333 162.68V306Z"><title>Dense, nDCG@10: 0.580</title></path>
+<path class="s3" d="M528.333 306V138.55Q528.333 134.55 532.333 134.55H548.333Q552.333 134.55 552.333 138.55V306Z"><title>Hybrid, nDCG@10: 0.675</title></path>
+<path class="s4" d="M554.333 306V131.946Q554.333 127.946 558.333 127.946H574.333Q578.333 127.946 578.333 131.946V306Z"><title>Hybrid + rerank, nDCG@10: 0.701</title></path>
+<text class="primary" x="566.333" y="122.946" text-anchor="middle">0.70</text>
+<text class="secondary" x="527.333" y="328" text-anchor="middle">nDCG@10</text>
+</svg>

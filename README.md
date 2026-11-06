@@ -42,6 +42,10 @@ uv sync --extra ui                         # Streamlit and Plotly (not needed fo
 uv run streamlit run app/streamlit_app.py  # competitors, features, pricing, gaps, evidence search, agent trace
 ```
 
+## Evaluation
+Every number we measure, including the aims we missed, is in
+[eval/results/summary.md](eval/results/summary.md).
+
 ## Development
 ```bash
 uv run pytest                    # offline tests

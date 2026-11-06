@@ -85,6 +85,51 @@
       "Difficult subscription cancellation and high prices"
     ]
   },
+  "fresh": {
+    "run": "20261107-045645",
+    "engine": "graph",
+    "competitors": 7,
+    "documents_by_source": {
+      "official": 34,
+      "pricing": 6,
+      "hn": 158,
+      "app_store": 139
+    },
+    "complaint_documents_by_company": {
+      "Otter.ai": 79,
+      "Fireflies.ai": 62,
+      "Fathom": 4,
+      "Krisp": 53,
+      "Granola": 80,
+      "Avoma": 7,
+      "tl;dv": 12
+    },
+    "complaints": 203,
+    "clusters": 20,
+    "market_gaps": 4,
+    "product_failures": 2,
+    "verified_market_gaps": 4,
+    "weak_signals": 14,
+    "quote_pass_rate": 0.932,
+    "requests": 72,
+    "cache_hits": 26,
+    "calls": 98,
+    "input_tokens": 217865,
+    "output_tokens": 36122,
+    "fallbacks": 0,
+    "requests_by_model": {
+      "gemini/gemini-3.5-flash-lite": 71,
+      "gemini/gemini-3.6-flash": 1
+    },
+    "runtime_s": 559.91,
+    "offline": false,
+    "top_gaps": [
+      "Recording meetings without consent or privacy",
+      "Poor transcription accuracy and quality",
+      "Difficult to cancel subscription",
+      "Expensive subscription costs"
+    ]
+  },
   "replay": {
     "run": "20261105-184721",
     "engine": "graph",
