@@ -2,7 +2,9 @@
 
 One call per company lists its plans. Then every number is checked against the page: a price
 that the page doesn't show (found with a regex) is dropped, and so is a limit that isn't written
-there. A tier keeps whatever could be checked, so a wrong price never reaches the report.
+there. So is a price that the page only ever shows as a promotion, marked with a footnote "*" or
+next to words like "20% off for 3 months". A tier keeps whatever could be checked, so a wrong
+price never reaches the report.
 """
 
 from __future__ import annotations
@@ -37,6 +39,10 @@ Rules:
   when billed monthly; "annual_monthly_usd" is the per-month price when billed annually.
   Leave a price empty when the page doesn't show it that way. Never calculate a price, for
   example from a yearly total. A free plan has monthly_usd 0.
+- Use each plan's regular price. Skip promotions: discounts for a limited time or the first
+  months ("20% off for 3 months"), offers for one country or card, student or nonprofit prices.
+  A price with a mark such as "*" that a footnote limits ("offer valid only with ...") is a
+  promotion too.
 - "per_seat": true if the price is per user or seat, false if it is per account or workspace;
   leave it empty if the page doesn't say.
 - "limits": up to 4 usage limits or key inclusions, copied from the page, such as
@@ -109,15 +115,15 @@ _AMOUNT = r"(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?"
 _BEFORE = re.compile(rf"(?:US\s?\$|\$|USD\s?)\s*{_AMOUNT}", re.I)  # $16.99, US$ 30, USD 30
 _AFTER = re.compile(rf"{_AMOUNT}\s*(?:USD|US dollars|dollars)\b", re.I)  # 30 USD
 _FREE = re.compile(r"\bfree\b|(?:\$|USD\s?)\s*0(?:\.00?)?(?![\d.,])", re.I)
+_PROMO = re.compile(
+    r"^\*|\d+\s?% off|off for|for the first|first \d+ months|limited[- ]time|offer valid", re.I
+)
+PROMO_WINDOW = 60  # characters after a price that may mark it as a promotion
 
 
 def prices_in(text: str) -> set[float]:
     """Every dollar amount the text shows."""
-    found = set()
-    for pattern in (_BEFORE, _AFTER):
-        for whole, cents in pattern.findall(text):
-            found.add(float(whole.replace(",", "")) + (float(f"0.{cents}") if cents else 0.0))
-    return found
+    return {_amount(m) for m in _price_matches(text)}
 
 
 def _checked(value: float | None, text: str) -> float | None:
@@ -126,7 +132,25 @@ def _checked(value: float | None, text: str) -> float | None:
         return None
     if value == 0:
         return 0.0 if _FREE.search(text) else None
-    return value if any(abs(value - p) < 0.005 for p in prices_in(text)) else None
+    matches = sorted(_price_matches(text), key=lambda m: m.start())
+    starts = [m.start() for m in matches] + [len(text)]
+    shown = [
+        text[m.end() : min(m.end() + PROMO_WINDOW, starts[i + 1])]  # up to the next price
+        for i, m in enumerate(matches)
+        if abs(_amount(m) - value) < 0.005
+    ]
+    if not shown or all(_PROMO.search(after) for after in shown):
+        return None
+    return value
+
+
+def _price_matches(text: str) -> list[re.Match]:
+    return [m for pattern in (_BEFORE, _AFTER) for m in pattern.finditer(text)]
+
+
+def _amount(m: re.Match) -> float:
+    whole, cents = m.group(1), m.group(2)
+    return float(whole.replace(",", "")) + (float(f"0.{cents}") if cents else 0.0)
 
 
 def _fit(docs: list[Document]) -> list[tuple[Document, str]]:

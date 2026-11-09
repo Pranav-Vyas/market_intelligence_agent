@@ -133,3 +133,20 @@ def test_prompt_marks_pages_as_data(backend):
 )
 def test_prices_in(text, expected):
     assert prices_in(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "value", "kept"),
+    [
+        ("Pro $16.99 $8.49* /user/month. *Offer valid only with an India-issued card", 8.49, False),
+        ("Business $30 $24 /user/month 20% off for 3 months", 24, False),
+        ("Business $30 /user/month or $19.99 billed annually", 19.99, True),
+        # the promotion after the sale price doesn't mark the regular price before it
+        ("Business $30 $24 /user/month 20% off for 3 months", 30, True),
+        # one plain mention is enough: the same number can be both a promotion and a real price
+        ("$24 for the first 3 months. Team plan: $24 per seat", 24, True),
+        ("Pro $8.33 /user/month save 51%", 8.33, True),  # a saving on annual billing is no promo
+    ],
+)
+def test_a_price_shown_only_as_a_promotion_is_dropped(text, value, kept):
+    assert (_checked(value, text) == value) is kept
