@@ -240,6 +240,7 @@ def analyst(state: ResearchState, config) -> dict:
         index,
         known_complaints=state.get("complaints", []),
         extract_from=[d for d in docs if d.id not in done],
+        known_clusters=state.get("clusters", []),
     )
     known = {c.id for c in state.get("complaints", [])}
     new = [c for c in analysis.complaints if c.id not in known]

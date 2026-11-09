@@ -195,3 +195,81 @@ def test_agglomerative_merges_until_the_threshold():
     assert agglomerative(vectors, 0.0001) == [[0], [1], [2], [3], [4]]
     assert agglomerative(vectors, 2.0) == [[0, 1, 2, 3, 4]]
     assert agglomerative(np.zeros((0, 2)), 0.5) == []
+
+
+def _earlier_round():
+    """Round one's pain points: price (complaints 0 and 1) and calendar (3 and 4)."""
+    return [
+        cl.model_copy(update={"label": label})
+        for cl, label in zip(
+            cluster_complaints(COMPLAINTS[:5]), ["pricing", "calendar"], strict=True
+        )
+    ]
+
+
+def test_a_later_round_keeps_the_earlier_pain_points_as_they_were(backend):
+    earlier = _earlier_round()
+    backend.calls.clear()
+    clusters = cluster_complaints(COMPLAINTS, previous=earlier)
+    assert [(cl.label, cl.complaint_ids) for cl in clusters] == [
+        (cl.label, cl.complaint_ids) for cl in earlier
+    ]
+    # only the complaints the earlier pain points don't hold are offered, as new
+    prompt = backend.calls[0]["prompt"]
+    assert "bluetooth headset audio drops" in prompt.split("New complaints:")[1]
+    assert '<pain id="0">\npricing' in prompt
+
+
+def test_new_complaints_join_an_existing_pain_point_or_start_a_new_one(backend):
+    earlier = _earlier_round()
+    late = [
+        _c(10, "much too expensive now", source="app_store", company="Granola"),
+        _c(11, "headset microphone not detected"),
+        _c(12, "headset microphone not detected", source="app_store"),
+    ]
+
+    def place(req):
+        n = _numbers(req)
+        return json.dumps(
+            {
+                "groups": [
+                    {"existing": 0, "items": [n["much too expensive now"]]},
+                    {
+                        "existing": -1,
+                        "label": "Headset problems.",
+                        "category": "failure",
+                        "items": [n["headset microphone not detected"], 999],
+                    },
+                    {"existing": 7, "items": [n["bluetooth headset audio drops"]]},  # no such
+                ]
+            }
+        )
+
+    backend.responder = place
+    clusters = {cl.label: cl for cl in cluster_complaints(COMPLAINTS + late, previous=earlier)}
+    assert "d10:0:10" in clusters["pricing"].complaint_ids
+    assert clusters["calendar"].complaint_ids == earlier[1].complaint_ids
+    headset = clusters["headset problems"]
+    assert headset.category == "failure" and len(headset.complaint_ids) == 2
+    # an answer naming a pain point that doesn't exist places nothing
+    assert all("d5:0:5" not in cl.complaint_ids for cl in clusters.values())
+
+
+def test_a_failed_placement_keeps_every_earlier_pain_point(backend):
+    earlier = _earlier_round()
+    backend.responder = None
+    backend.responses = ["not json", "still not json"]
+    clusters = cluster_complaints(COMPLAINTS, previous=earlier)
+    assert [cl.label for cl in clusters][:2] == ["pricing", "calendar"]
+    assert any("new complaints kept" in w for w in runtime.warnings())
+
+
+def test_no_new_complaints_means_no_call(backend):
+    earlier = _earlier_round()
+    backend.calls.clear()
+    held = [c for c in COMPLAINTS if any(c.id in cl.complaint_ids for cl in earlier)]
+    assert [cl.label for cl in cluster_complaints(held, previous=earlier)] == [
+        "pricing",
+        "calendar",
+    ]
+    assert backend.calls == []

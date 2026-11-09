@@ -45,6 +45,17 @@ def _fake_llm_reply(req) -> str:
             label, numbers = items[0][1], [int(i) for i, _ in items]
             groups.append({"label": label, "category": "need", "items": numbers})
         return json.dumps({"groups": groups})
+    if req.schema is not None and req.schema.__name__ == "_Additions":
+        # new complaints join the existing pain point whose example summary they share
+        existing = re.findall(r'<pain id="(\d+)">\n[^\n]+\n- ([^\n]+)', req.prompt)
+        new = re.findall(r"^(\d+)\. (.+)$", req.prompt.split("New complaints:", 1)[1], re.M)
+        groups = []
+        for number, summary in new:
+            match = next((int(p) for p, example in existing if example == summary), -1)
+            groups.append(
+                {"existing": match, "label": summary, "category": "need", "items": [int(number)]}
+            )
+        return json.dumps({"groups": groups})
     if req.schema is not None and req.schema.__name__ == "_Coverage":
         return json.dumps({"judgments": []})
     if req.schema is not None and req.schema.__name__ == "_Verdicts":
