@@ -211,7 +211,11 @@ def search(
         match = [c for c in companies if name_key(c) == name_key(company)]
         match = match or [c for c in companies if company.lower() in c.lower()]
         if len(match) != 1:
-            typer.echo(f"Unknown company {company!r}. Indexed: {', '.join(companies)}", err=True)
+            typer.echo(
+                f"Unknown company {company!r} in the {slug} index. Indexed: "
+                f"{', '.join(companies)}. Pick another market with --market.",
+                err=True,
+            )
             raise typer.Exit(1)
         company = match[0]
     unknown = [s for s in source or [] if s not in get_args(SourceType)]

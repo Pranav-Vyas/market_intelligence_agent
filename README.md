@@ -22,7 +22,7 @@ The report is written to `data/runs/<market>/<timestamp>/report.md`, with the fu
 
 Each run also saves its search index, so you can look through the evidence yourself:
 ```bash
-uv run mia search "pricing too expensive" --company Otter      # -s hn / app_store / pricing ...
+uv run mia search "pricing too expensive" -m "AI meeting assistants" --company Otter   # -s hn ...
 uv run mia index "AI meeting assistants"   # collect and index without the analysis steps
 ```
 
@@ -33,7 +33,7 @@ without network access or quota (share it privately; scraped data never goes in 
 uv run mia snapshot create                       # → data/snapshots/<name>-<time>.zip
 uv run mia snapshot restore path/to/snapshot.zip # prints any .env model settings to match
 uv run mia run "AI meeting assistants" --offline
-uv run mia stats                                 # documents per competitor and source
+uv run mia stats -m "AI meeting assistants"      # documents per competitor and source
 ```
 
 ### Browse a run in the browser
