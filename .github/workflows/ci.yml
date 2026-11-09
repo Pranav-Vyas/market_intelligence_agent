@@ -13,8 +13,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - name: Install dependencies
-        run: uv sync --locked
+      - name: Install dependencies (with the ui extra, so the Streamlit app is tested too)
+        run: uv sync --locked --extra ui
       - name: Lint
         run: |
           uv run ruff check .
