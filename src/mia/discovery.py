@@ -20,7 +20,7 @@ import yaml
 from pydantic import BaseModel
 
 from mia import runtime
-from mia.collectors.search import search
+from mia.collectors.search import SearchError, search
 from mia.collectors.web import fetch_page
 from mia.config import REPO_ROOT
 from mia.llm import LLMOutputError
@@ -237,7 +237,12 @@ class _Source:
 def _gather_sources(queries: list[str], seen_urls: set[str]) -> list[_Source]:
     results = []
     for q in queries:
-        for r in search(q, k=8):
+        try:
+            found = search(q, k=8)
+        except SearchError as err:  # one failed query costs its results, not the run
+            runtime.warn(f"Discovery: search {q!r} failed ({err})")
+            continue
+        for r in found:
             if _matches(r.url, EXCLUDED_DOMAINS):
                 continue
             if r.url not in seen_urls:
@@ -326,7 +331,11 @@ def _validate(market: str, todo: list[_Candidate], checked: dict[str, Competitor
 def _homepage(cand: _Candidate) -> str | None:
     if cand.websites:
         return f"https://{cand.websites.most_common(1)[0][0]}"
-    for r in search(f"{cand.name} official site", k=5):
+    try:
+        found = search(f"{cand.name} official site", k=5)
+    except SearchError:
+        return None
+    for r in found:
         if not _is_skipped(r.url):
             host = urlsplit(r.url).netloc
             return f"https://{host}"
