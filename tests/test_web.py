@@ -35,6 +35,7 @@ SITE = {
     "/integrations": httpx.Response(200, html=page("Integrations", f"<p>Slack. {FILLER}</p>")),
     "/pricing": httpx.Response(200, html=page("Pricing", "<div id='app'></div>")),  # JS-rendered
     "/plans": httpx.Response(200, html=page("Plans", f"<p>Pro is $12 per seat. {FILLER}</p>")),
+    "/old-plans": httpx.Response(302, headers={"location": "/"}),  # a dead link sent home
     "/file.pdf": httpx.Response(200, content=b"%PDF", headers={"content-type": "application/pdf"}),
     "/private/x": httpx.Response(200, html=page("Secret", f"<p>{FILLER}</p>")),
 }
@@ -90,6 +91,17 @@ def test_thin_page_is_kept_and_flagged_when_rendering_is_unavailable(site, monke
     monkeypatch.setattr(web, "_renderer", lambda url: None)
     doc = web.fetch_page("https://acme.example.com/pricing", "pricing", "Acme")
     assert doc is not None and doc.meta == {"thin": True}
+
+
+def test_a_picked_pricing_link_that_redirects_home_keeps_the_homepage(site):
+    def choose(c, links, keyword):
+        return "https://acme.example.com/old-plans", []
+
+    docs = web.collect_official(ACME, choose=choose)
+    kinds = {d.url: d.source_type for d in docs}
+    assert kinds["https://acme.example.com/"] == "official"
+    # the usual pricing link is tried instead
+    assert [u for u, k in kinds.items() if k == "pricing"] == ["https://acme.example.com/pricing"]
 
 
 def test_competitor_pricing_url_wins_over_discovered_link(site):

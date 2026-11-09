@@ -47,6 +47,7 @@ def test_unknown_company_lists_the_indexed_ones(saved):
     result = _search("pricing", "--company", "Otter")
     assert result.exit_code == 1
     assert "Indexed: Noted, Recapper, Scribely" in result.output
+    assert "in the ai-meeting-assistants index" in result.output and "--market" in result.output
 
 
 def test_unknown_source_is_rejected(saved):

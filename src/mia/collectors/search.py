@@ -4,6 +4,7 @@ fallback when Tavily fails. Results are cached, so repeated queries cost no cred
 from __future__ import annotations
 
 import logging
+import time
 
 from mia import cache, http, runtime
 from mia.schemas import SearchResult
@@ -11,6 +12,8 @@ from mia.schemas import SearchResult
 log = logging.getLogger(__name__)
 
 TAVILY_URL = "https://api.tavily.com/search"
+DDGS_RETRY_WAIT_S = 5  # ddgs answers "No results found" when it's throttled; one retry helps
+_sleep = time.sleep
 
 
 class SearchError(Exception):
@@ -53,8 +56,12 @@ def _ddgs(query: str, k: int) -> list[SearchResult]:
 
         try:
             raw = DDGS().text(query, max_results=k)
-        except DDGSException as err:
-            raise SearchError(f"ddgs search failed: {err}") from err
+        except DDGSException:
+            _sleep(DDGS_RETRY_WAIT_S)
+            try:
+                raw = DDGS().text(query, max_results=k)
+            except DDGSException as err:
+                raise SearchError(f"ddgs search failed: {err}") from err
         return [
             {"url": r["href"], "title": r.get("title", ""), "snippet": r.get("body", "")}
             for r in raw

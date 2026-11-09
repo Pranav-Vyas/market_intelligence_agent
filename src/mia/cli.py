@@ -47,11 +47,15 @@ def run(
         raise typer.Exit(2)
     if not linear:
         from mia.agent import graph as research_graph
+        from mia.llm import LLMConfigError
 
         try:
             result = research_graph.run(market, offline=offline, resume=resume)
         except research_graph.RunStopped as err:
-            typer.echo(f"{err}\nResume with: uv run mia run --resume {err.run_id}", err=True)
+            if isinstance(err.__cause__, LLMConfigError):  # resuming can't fix a setting
+                typer.echo(f"{err.__cause__}\nFix .env, then start the run again.", err=True)
+            else:
+                typer.echo(f"{err}\nResume with: uv run mia run --resume {err.run_id}", err=True)
             raise typer.Exit(1) from err
         except ValueError as err:
             typer.echo(str(err), err=True)
@@ -207,7 +211,11 @@ def search(
         match = [c for c in companies if name_key(c) == name_key(company)]
         match = match or [c for c in companies if company.lower() in c.lower()]
         if len(match) != 1:
-            typer.echo(f"Unknown company {company!r}. Indexed: {', '.join(companies)}", err=True)
+            typer.echo(
+                f"Unknown company {company!r} in the {slug} index. Indexed: "
+                f"{', '.join(companies)}. Pick another market with --market.",
+                err=True,
+            )
             raise typer.Exit(1)
         company = match[0]
     unknown = [s for s in source or [] if s not in get_args(SourceType)]

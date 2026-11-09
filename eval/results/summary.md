@@ -13,7 +13,7 @@ assistants**, which ran with no market-specific code. Details and commands are i
 | Clustering | 20 random complaint-to-cluster assignments per market | At least 80% sensible | **Met on the demo market:** 95%. **Missed on the second:** 70% (see below) |
 | Faithfulness | Candidate quotes that pass the verbatim and judge checks | At least 95% | **Missed:** 90% (55 of 61) and 86% (75 of 87). Only passing quotes reach a report |
 | Multi-agent vs linear | Same cached demo-market data | More evidence for the budget, or say honestly where not | **Not shown on this data:** same 229 complaints for 91 LLM calls vs 48; the graph read 2 more official pages |
-| Cost and latency | Per fresh and cached run | Fresh run within the free quota | **Met:** 72 requests in 9.3 minutes (cap 200, measured before the Day 9 changes, which don't add calls); a cached replay uses 0 requests in about 20 seconds |
+| Cost and latency | Per fresh and cached run | Fresh run within the free quota | **Met:** from empty caches, 71 requests in 11.7 minutes (demo) and 96 in 18.6 minutes (second), against a cap of 200; a cached replay uses 0 requests in about 20 seconds |
 
 ## Retrieval
 
@@ -60,6 +60,13 @@ Reranking costs about 1.4 seconds per query on a laptop CPU.
   can merge, split or rename pain points. Within a run, research rounds now keep the pain points
   they start with. Before that change, a calendar-support gap on the second market ranked at 7.9
   after one round and was gone after the next; it now stays a weak signal at 3.7.
+- **Research inflates what it looks for.** Follow-up research only searches for the pain points
+  it was sent after, so those gain complaints the others can't. In the second market's final run,
+  two searches for Motion's mobile app added 35 reviews, and "limited mobile app functionality"
+  became its most common complaint (12%).
+- **Example reports are later runs.** `examples/` holds each market's final run. The second
+  market's reads Clockwise's homepage, after a fix, and its research found more, so it has 284
+  complaints. The hand checks above use run 20261109-204210.
 - **Thin evidence.** Some products have almost no public complaints: Fathom, Avoma and tl;dv in the
   demo market, and Trevor AI, Clockwise and Reclaim.ai in the second.
 - **Overload.** When Flash-Lite was overloaded, one live run lost half its complaints but still

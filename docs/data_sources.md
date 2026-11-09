@@ -6,6 +6,22 @@ What each collector uses, whether it works, and the fallback. Re-check any time 
 uv run mia check-access            # or --markdown to paste a fresh table below
 ```
 
+## Where the data comes from (2026-11-09)
+
+| Data | Source | How | Status |
+|---|---|---|---|
+| Competitors | Web search (Tavily, or ddgs without a key) for comparison and "best of" articles | Search results, then each homepage is checked | Used |
+| Features and pricing | Each competitor's own site | The Product Scout picks the pages; robots.txt respected | Used |
+| Complaints | Hacker News comments | Algolia API | Used |
+| Complaints | Apple App Store reviews, 1–3 stars, five storefronts | Public RSS feed | Used |
+| Complaints | Google Play | Not used: robots.txt disallows the review endpoint | Left out |
+| Complaints | Reddit | Not used: API access needs Reddit's approval | Left out |
+| Complaints | G2, Capterra, Trustpilot and similar | Never fetched: their terms forbid scraping. Search snippets were tested on 2026-11-06, but they're not used: many named the wrong company, and Trustpilot's are often its own summaries | Undecided |
+
+**Documents are not complaints.** Many Hacker News comments mention a product without complaining
+about it, so a product can have dozens of documents and almost no complaints (Clockwise: 39 HN
+comments, 0 complaints). The reports count complaints, and say when a competitor's evidence is thin.
+
 ## Access check (2026-10-10, from a home connection, no keys set)
 
 | Source | Status | Detail |
@@ -56,6 +72,24 @@ Without Reddit, Google Play and review sites, these three have little public com
 are allowed to collect. They stay in the report (they matter for feature coverage), and their
 complaints count as weak evidence. Searching HN for each product's domain (e.g. "tldv.io") raised
 tl;dv from 5 to 12 documents.
+
+## Complaints: second market (2026-11-09)
+`uv run mia stats -m "AI calendar / scheduling assistants"`, after a live run. 6 of 8 competitors
+meet the minimums.
+
+| Competitor | HN comments | App Store reviews | Official pages | Pricing page | Meets minimums |
+|---|---|---|---|---|---|
+| Motion | 15 | 45 | 5 | yes | yes |
+| Reclaim.ai | 40 | 0 | 5 | yes | yes |
+| Akiflow | 20 | 8 | 5 | yes | yes |
+| Trevor AI | 2 | 0 | 4 | yes | **no**: 2 complaint documents |
+| Calendly | 45 | 40 | 5 | yes | yes |
+| Morgen | 3 | 25 | 5 | yes | yes |
+| Vimcal | 8 | 27 | 2 | yes | yes |
+| Clockwise | 39 | 0 | 0 | yes | **no**: its picked pricing link redirected to the homepage, which then replaced it. Fixed on 2026-11-09; the next run reads its homepage |
+
+App Store reviews are 93% of this market's complaints, so mobile apps dominate even more than in
+the demo market.
 
 Names that are ordinary words are the weak spot on Hacker News. `collectors/matching.py`
 requires the product's domain, or the name close to a word from the market name, which removes

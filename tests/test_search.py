@@ -116,3 +116,36 @@ def test_offline_uses_cached_tavily_results_without_a_key(settings, use_http, fa
     runtime.configure(settings=replace(settings, tavily_api_key=""), offline=True)
     assert [r.url for r in search("meeting notes", k=5)] == ["https://t.example.com"]
     assert fake_ddgs.calls == 0
+
+
+def test_ddgs_retries_once_when_it_finds_nothing(settings, fake_ddgs, monkeypatch):
+    from ddgs.exceptions import DDGSException
+
+    runtime.configure(settings=settings)
+    answers = [DDGSException("No results found."), [{"href": "https://a.example.com"}]]
+
+    def text(self, query, max_results):
+        item = answers.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    monkeypatch.setattr(fake_ddgs, "text", text)
+    waits: list[float] = []
+    monkeypatch.setattr(search_mod, "_sleep", waits.append)
+    assert [r.url for r in search("rare query")] == ["https://a.example.com"]
+    assert waits == [search_mod.DDGS_RETRY_WAIT_S]
+
+
+def test_ddgs_failing_twice_raises_a_search_error(settings, fake_ddgs, monkeypatch):
+    from ddgs.exceptions import DDGSException
+
+    runtime.configure(settings=settings)
+
+    def text(self, query, max_results):
+        raise DDGSException("No results found.")
+
+    monkeypatch.setattr(fake_ddgs, "text", text)
+    monkeypatch.setattr(search_mod, "_sleep", lambda s: None)
+    with pytest.raises(search_mod.SearchError):
+        search("rare query")

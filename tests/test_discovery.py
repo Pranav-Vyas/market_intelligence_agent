@@ -192,3 +192,22 @@ def test_uses_few_llm_calls(world, backend):
 )
 def test_name_key(raw, key):
     assert name_key(raw) == key
+
+
+def test_a_failed_search_skips_that_query_instead_of_stopping(world):
+    from mia.collectors.search import SearchError
+
+    good = world.search
+
+    def flaky(query, k=10):
+        if query == discovery.default_queries("AI meeting assistants")[0]:
+            raise SearchError("ddgs search failed: No results found.")
+        return good(query, k)
+
+    discovery.search = flaky
+    try:
+        found = discover_competitors("AI meeting assistants", k=8)
+    finally:
+        discovery.search = good
+    assert found  # the other queries still found competitors
+    assert any(w.startswith("Discovery: search") for w in runtime.warnings())
