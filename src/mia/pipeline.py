@@ -121,8 +121,9 @@ def analyze(
     features = build_feature_matrix(competitors, index)
     todo = docs if extract_from is None else extract_from
     chunks = chunk_documents([d for d in todo if d.source_type in COMPLAINT_SOURCE_TYPES])
-    complaints = list(known_complaints) + extract_complaints(chunks)
-    clusters = cluster_complaints(complaints, previous=known_clusters)
+    new = extract_complaints(chunks)
+    complaints = list(known_complaints) + new
+    clusters = cluster_complaints(complaints, previous=known_clusters, new=new)
     coverage = {
         cl.id: assess_coverage(cl, competitors, index) for cl in clusters if cl.category == "need"
     }

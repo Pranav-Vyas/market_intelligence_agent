@@ -273,3 +273,14 @@ def test_no_new_complaints_means_no_call(backend):
         "calendar",
     ]
     assert backend.calls == []
+
+
+def test_a_round_with_no_new_complaints_changes_nothing(backend):
+    earlier = _earlier_round()
+    backend.calls.clear()
+    # the headset complaint fit nowhere before: it isn't offered again
+    clusters = cluster_complaints(COMPLAINTS, previous=earlier, new=[])
+    assert [(cl.label, cl.complaint_ids) for cl in clusters] == [
+        (cl.label, cl.complaint_ids) for cl in earlier
+    ]
+    assert backend.calls == []
