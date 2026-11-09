@@ -611,5 +611,145 @@
     "runtime_s": 944,
     "warnings": 0,
     "notes": "The laptop slept for 16,419 s during the run, which is removed from runtime_s here. Research once lifted a calendar-support pain point to a ranked gap (7.9), but the next regrouping dissolved it, so it isn't in the final report."
+  },
+  {
+    "market": "AI meeting assistants",
+    "date": "2026-11-09",
+    "task": "Day 9: demo market on the cached corpus, with promotional prices skipped and pain points kept between rounds; the snapshot is made from this run",
+    "engine": "graph",
+    "run_id": "ai-meeting-assistants-20261109-204152",
+    "competitors": [
+      "Otter",
+      "Fathom",
+      "Fireflies",
+      "Avoma",
+      "tl;dv",
+      "Krisp",
+      "Granola",
+      "Read.ai"
+    ],
+    "documents_by_source": {
+      "official": 37,
+      "pricing": 7,
+      "hn": 172,
+      "app_store": 150
+    },
+    "complaint_documents_by_company": {
+      "Otter": 79,
+      "Fathom": 3,
+      "Fireflies": 62,
+      "Avoma": 7,
+      "tl;dv": 12,
+      "Krisp": 53,
+      "Granola": 80,
+      "Read.ai": 26
+    },
+    "complaints": 229,
+    "clusters": 19,
+    "ranked_market_gaps": 3,
+    "product_failures": 6,
+    "weak_signals": 10,
+    "verification": {
+      "opportunities": 9,
+      "opportunities_verified": 9,
+      "verification_rate": 1.0,
+      "quotes_checked": 61,
+      "quotes_passed": 55,
+      "quote_pass_rate": 0.902
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 2,
+      "researched": [
+        "after research: 'Recording meetings without consent' weak 6.9 → 'Recording meetings without consent' weak 6.9 (+0 complaints), unchanged",
+        "after research: 'Forced google or microsoft login' weak 6.5 → 'Forced google or microsoft login' weak 6.5 (+0 complaints), unchanged"
+      ]
+    },
+    "llm": {
+      "requests": 0,
+      "cache_hits": 91,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "fallbacks": 0,
+      "backup_calls": 0,
+      "requests_by_model": {},
+      "requests_by_phase": {}
+    },
+    "runtime_s": 16.54,
+    "warnings": 0,
+    "notes": "Round one is the cached Day 7 analysis, so pain points, scores and quotes match run 20261105-184252. Only pricing changed."
+  },
+  {
+    "market": "AI calendar / scheduling assistants",
+    "date": "2026-11-09",
+    "task": "Day 9: second market on the cached corpus, with pain points kept between rounds",
+    "engine": "graph",
+    "run_id": "ai-calendar-scheduling-assistants-20261109-204210",
+    "competitors": [
+      "Motion",
+      "Reclaim.ai",
+      "Akiflow",
+      "Trevor AI",
+      "Calendly",
+      "Morgen",
+      "Vimcal",
+      "Clockwise"
+    ],
+    "documents_by_source": {
+      "official": 31,
+      "pricing": 8,
+      "hn": 172,
+      "app_store": 145
+    },
+    "complaint_documents_by_company": {
+      "Motion": 60,
+      "Reclaim.ai": 40,
+      "Akiflow": 28,
+      "Trevor AI": 2,
+      "Calendly": 85,
+      "Morgen": 28,
+      "Vimcal": 35,
+      "Clockwise": 39
+    },
+    "complaints": 219,
+    "clusters": 20,
+    "ranked_market_gaps": 2,
+    "product_failures": 11,
+    "weak_signals": 7,
+    "verification": {
+      "opportunities": 13,
+      "opportunities_verified": 12,
+      "verification_rate": 0.923,
+      "quotes_checked": 87,
+      "quotes_passed": 75,
+      "quote_pass_rate": 0.862
+    },
+    "agent": {
+      "discovery_rounds": 1,
+      "verify_rounds": 3,
+      "researched": [
+        "after research: 'Difficult user interface and navigation' weak 3.9 → 'Difficult user interface and navigation' weak 4.0 (+1 complaints), CHANGED",
+        "after research: 'Missing calendar integrations and features' weak 3.6 → 'Missing calendar integrations and features' weak 3.7 (+0 complaints), CHANGED",
+        "after research: 'Difficult user interface and navigation' weak 4.0 → 'Difficult user interface and navigation' weak 4.3 (+1 complaints), CHANGED",
+        "after research: 'Missing calendar integrations and features' weak 3.7 → 'Missing calendar integrations and features' weak 3.7 (+1 complaints), unchanged"
+      ]
+    },
+    "llm": {
+      "requests": 13,
+      "cache_hits": 99,
+      "input_tokens": 21591,
+      "output_tokens": 1984,
+      "fallbacks": 0,
+      "backup_calls": 0,
+      "requests_by_model": {
+        "gemini/gemini-3.5-flash-lite": 13
+      },
+      "requests_by_phase": {
+        "collection": 6
+      }
+    },
+    "runtime_s": 109.91,
+    "warnings": 0,
+    "notes": "Research added 13 complaints, placed in existing pain points without regrouping. Round one matches run 20261107-000551; its later regrouping is gone."
   }
 ]

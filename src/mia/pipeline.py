@@ -112,15 +112,18 @@ def analyze(
     *,
     known_complaints: Sequence[Complaint] = (),
     extract_from: list[Document] | None = None,
+    known_clusters: Sequence[ComplaintCluster] = (),
 ) -> Analysis:
     """Features, complaints, clusters, coverage and scores: everything between the collected
     documents and verification. Complaints are extracted from `extract_from` (default: all
-    documents) and added to `known_complaints`, so a second round only reads new documents."""
+    documents) and added to `known_complaints`, so a second round only reads new documents.
+    `known_clusters` keeps an earlier round's pain points, so research can't reshuffle them."""
     features = build_feature_matrix(competitors, index)
     todo = docs if extract_from is None else extract_from
     chunks = chunk_documents([d for d in todo if d.source_type in COMPLAINT_SOURCE_TYPES])
-    complaints = list(known_complaints) + extract_complaints(chunks)
-    clusters = cluster_complaints(complaints)
+    new = extract_complaints(chunks)
+    complaints = list(known_complaints) + new
+    clusters = cluster_complaints(complaints, previous=known_clusters, new=new)
     coverage = {
         cl.id: assess_coverage(cl, competitors, index) for cl in clusters if cl.category == "need"
     }

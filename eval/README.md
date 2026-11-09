@@ -98,7 +98,7 @@ uv run python eval/compare_runs.py <graph run.json> <linear run.json> --fresh <r
 ```
 
 On the same cached pages and reviews, the graph costs about twice the LLM calls of the linear
-pipeline (92 vs 48) and finds the same complaints. Its gain is 2 more official pages, which changed
+pipeline (91 vs 48) and finds the same complaints. Its gain is 2 more official pages, which changed
 some coverage judgments. Follow-up research found no new documents on this corpus, though in one
 fresh run it lifted a weak signal to a ranked gap. Treat that as one run, not a measured advantage.
 
