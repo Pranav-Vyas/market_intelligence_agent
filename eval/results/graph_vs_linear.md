@@ -12,7 +12,7 @@ Same market and the same cached pages and reviews.
 | Product failures | 6 | 6 |
 | Weak signals | 10 | 10 |
 | Quote pass rate | 0.902 | 0.902 |
-| LLM calls from an empty cache | 92 | 48 |
+| LLM calls from an empty cache | 91 | 48 |
 
 Complaint documents per competitor:
 
@@ -31,5 +31,5 @@ Complaint documents per competitor:
 
 | Run | Requests | Cache hits | Tokens | Minutes |
 |---|---|---|---|---|
-| fresh (graph) | 72 | 26 | 253987 | 9.3 |
-| replay (graph) | 0 | 92 | 0 | 0.3 |
+| fresh (graph, 2026-11-07) | 72 | 26 | 253987 | 9.3 |
+| replay (graph) | 0 | 91 | 0 | 0.3 |

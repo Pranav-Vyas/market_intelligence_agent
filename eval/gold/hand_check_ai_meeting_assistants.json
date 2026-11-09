@@ -1,11 +1,11 @@
 {
   "market": "AI meeting assistants",
-  "run": "20261105-184252",
+  "run": "20261109-204152",
   "judged_by": "AI-drafted from the cached pages, not yet confirmed by a person",
   "pricing": {
     "Otter|Basic|free": "ok",
-    "Otter|Pro|pro": "wrong: annual price 8.49 is a promotional offer on the monthly plan; the annual price on the page is 8.33",
-    "Otter|Business|business": "wrong: annual price 24 is a 3-month promotional price; the annual price on the page is 19.99",
+    "Otter|Pro|pro": "ok",
+    "Otter|Business|business": "wrong: the promotional annual price is now dropped, but the regular one (19.99) is missing",
     "Otter|Enterprise|enterprise": "ok",
     "Fathom|Free|free": "ok",
     "Fathom|Team|business": "ok",
@@ -17,7 +17,7 @@
     "Fireflies|Business|business": "ok",
     "Fireflies|Enterprise|enterprise": "ok: annual only, so the monthly field repeats the same price",
     "Avoma|Startup|pro": "ok",
-    "Avoma|Organization|business": "wrong: annual price 24 is a discounted figure; the plan comparison on the page says 29",
+    "Avoma|Organization|business": "wrong: annual price 24 is a sale price; the plan comparison on the page says 29",
     "Avoma|Enterprise|enterprise": "ok: annual only, so the monthly field repeats the same price",
     "Avoma|Conversation Intelligence|other": "ok",
     "Avoma|Revenue Intelligence|other": "ok",
@@ -25,7 +25,7 @@
     "Read.ai|Free|free": "ok",
     "Read.ai|Pro|pro": "ok",
     "Read.ai|Enterprise|business": "ok",
-    "Read.ai|Enterprise+|enterprise": "ok"
+    "Read.ai|Enterprise+|business": "ok: business fits, since it has a listed price; it also says to talk to sales, so enterprise would fit too"
   },
   "features": {
     "Granola|Interactive AI meeting chat": "ok",
