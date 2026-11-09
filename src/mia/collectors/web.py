@@ -88,10 +88,14 @@ def collect_official(c: Competitor, choose: Chooser | None = None) -> list[Docum
     picked = choose(c, site_links(html, home.url), links) if choose else None
     if picked is not None:
         pricing_url, features = picked[0] or pricing_url, picked[1][:MAX_FEATURE_PAGES]
-    pricing_url = c.pricing_url or pricing_url or urljoin(home.url, "/pricing")
+    keyword_pricing = links["pricing"][0] if links["pricing"] else urljoin(home.url, "/pricing")
+    pricing_url = c.pricing_url or pricing_url or keyword_pricing
 
     docs = [home]
     pricing = fetch_page(pricing_url, "pricing", c.name)
+    if pricing is not None and pricing.id == home.id and keyword_pricing != pricing_url:
+        # a picked link that only redirects home isn't a pricing page: try the usual one
+        pricing = fetch_page(keyword_pricing, "pricing", c.name)
     if pricing is not None:
         docs.append(pricing)
     for url in features:
@@ -99,7 +103,9 @@ def collect_official(c: Competitor, choose: Chooser | None = None) -> list[Docum
         if page is not None:
             docs.append(page)
 
-    unique = {d.id: d for d in docs}  # redirects can make two links land on the same page
+    unique: dict[str, Document] = {}
+    for d in docs:  # redirects can make two links land on one page: the first one keeps it
+        unique.setdefault(d.id, d)
     return list(unique.values())
 
 
