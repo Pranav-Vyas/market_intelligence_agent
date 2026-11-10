@@ -5,7 +5,7 @@ and public customer complaints, and writes a cited report: a feature comparison,
 comparison, the complaints grouped into pain points, and the market gaps those pain points point
 to, each backed by quotes that were checked word for word.
 
-![Ranked market gaps in the app](docs/images/app-gaps.png)
+![The app: ranked gaps with their quotes, the other tabs, an evidence search, and the second market](docs/images/app-demo.gif)
 
 **Example reports:** [AI meeting assistants](examples/ai-meeting-assistants.md) and
 [AI calendar / scheduling assistants](examples/ai-calendar-scheduling-assistants.md). The second
@@ -122,8 +122,12 @@ uv run mia run --resume <run-id>                                # continue a sto
 uv run mia run "AI meeting assistants" --linear                 # the plain pipeline, for comparison
 ```
 
-| Evidence search | Each scout's decisions |
+| Ranked gaps, each score split into its parts | Feature comparison from the vendors' own pages |
 |---|---|
+| ![Ranked gaps](docs/images/app-gaps.png) | ![Feature comparison](docs/images/app-features.png) |
+| **Pain points, needs in blue and failures in orange** | **Pricing as each page shows it** |
+| ![Complaints](docs/images/app-complaints.png) | ![Pricing](docs/images/app-pricing.png) |
+| **Evidence search over everything collected** | **Each scout's decisions, step by step** |
 | ![Evidence explorer](docs/images/app-evidence.png) | ![Agent trace](docs/images/app-trace.png) |
 
 ## Design decisions
