@@ -121,7 +121,7 @@ def test_the_market_picker_switches_market_and_its_runs(two_markets):
     assert set(market.options) == {"AI meeting assistants", "AI calendar assistants"}
     market.select("ai-calendar-assistants").run()
     assert not at.exception
-    assert "# 🔭 AI calendar assistants" in _text(at)
+    assert "# AI calendar assistants" in _text(at)
     run = next(sb for sb in at.selectbox if "Run" in sb.label)
     assert run.options == ["2026-11-01 10:00"]
 
